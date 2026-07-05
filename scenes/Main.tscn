@@ -1,0 +1,190 @@
+[gd_scene load_steps=8 format=3]
+
+[ext_resource type="Script" path="res://scripts/MainController.gd" id="1_mc"]
+[ext_resource type="Script" path="res://scripts/StringManager.gd" id="2_sm"]
+[ext_resource type="Script" path="res://scripts/StringDrawer.gd" id="3_sd"]
+[ext_resource type="Script" path="res://scripts/FingerNode.gd" id="4_fn"]
+[ext_resource type="Script" path="res://scripts/LevelManager.gd" id="5_lm"]
+[ext_resource type="Script" path="res://scripts/UIManager.gd" id="6_ui"]
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_f"]
+radius = 40.0
+
+[node name="Main" type="Node2D" node_paths=PackedStringArray("string_manager", "string_drawer", "level_manager", "ui_manager")]
+script = ExtResource("1_mc")
+string_manager = NodePath("StringManager")
+string_drawer = NodePath("StringDrawer")
+level_manager = NodePath("LevelManager")
+ui_manager = NodePath("UIManager")
+
+[node name="StringManager" type="Node" parent="."]
+script = ExtResource("2_sm")
+
+[node name="LevelManager" type="Node" parent="."]
+script = ExtResource("5_lm")
+
+[node name="StringDrawer" type="Node2D" parent="." node_paths=PackedStringArray("line", "string_manager")]
+script = ExtResource("3_sd")
+line = NodePath("Line2D")
+string_manager = NodePath("../StringManager")
+
+[node name="Line2D" type="Line2D" parent="StringDrawer"]
+width = 12.0
+default_color = Color(0.96, 0.45, 0.65, 1)
+joint_mode = 2
+begin_cap_mode = 2
+end_cap_mode = 2
+antialiased = true
+
+[node name="Fingers" type="Node2D" parent="."]
+
+[node name="Finger0" type="Area2D" parent="Fingers" groups=["fingers"]]
+position = Vector2(640, 110)
+script = ExtResource("4_fn")
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Fingers/Finger0"]
+shape = SubResource("CircleShape2D_f")
+
+[node name="Finger1" type="Area2D" parent="Fingers" groups=["fingers"]]
+position = Vector2(786, 158)
+script = ExtResource("4_fn")
+finger_id = 1
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Fingers/Finger1"]
+shape = SubResource("CircleShape2D_f")
+
+[node name="Finger2" type="Area2D" parent="Fingers" groups=["fingers"]]
+position = Vector2(877, 283)
+script = ExtResource("4_fn")
+finger_id = 2
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Fingers/Finger2"]
+shape = SubResource("CircleShape2D_f")
+
+[node name="Finger3" type="Area2D" parent="Fingers" groups=["fingers"]]
+position = Vector2(877, 437)
+script = ExtResource("4_fn")
+finger_id = 3
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Fingers/Finger3"]
+shape = SubResource("CircleShape2D_f")
+
+[node name="Finger4" type="Area2D" parent="Fingers" groups=["fingers"]]
+position = Vector2(786, 562)
+script = ExtResource("4_fn")
+finger_id = 4
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Fingers/Finger4"]
+shape = SubResource("CircleShape2D_f")
+
+[node name="Finger5" type="Area2D" parent="Fingers" groups=["fingers"]]
+position = Vector2(640, 610)
+script = ExtResource("4_fn")
+finger_id = 5
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Fingers/Finger5"]
+shape = SubResource("CircleShape2D_f")
+
+[node name="Finger6" type="Area2D" parent="Fingers" groups=["fingers"]]
+position = Vector2(494, 562)
+script = ExtResource("4_fn")
+finger_id = 6
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Fingers/Finger6"]
+shape = SubResource("CircleShape2D_f")
+
+[node name="Finger7" type="Area2D" parent="Fingers" groups=["fingers"]]
+position = Vector2(403, 437)
+script = ExtResource("4_fn")
+finger_id = 7
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Fingers/Finger7"]
+shape = SubResource("CircleShape2D_f")
+
+[node name="Finger8" type="Area2D" parent="Fingers" groups=["fingers"]]
+position = Vector2(403, 283)
+script = ExtResource("4_fn")
+finger_id = 8
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Fingers/Finger8"]
+shape = SubResource("CircleShape2D_f")
+
+[node name="Finger9" type="Area2D" parent="Fingers" groups=["fingers"]]
+position = Vector2(494, 158)
+script = ExtResource("4_fn")
+finger_id = 9
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Fingers/Finger9"]
+shape = SubResource("CircleShape2D_f")
+
+[node name="UIManager" type="CanvasLayer" parent="." node_paths=PackedStringArray("string_manager", "undo_button", "reset_button", "share_button", "level_label", "message_label")]
+script = ExtResource("6_ui")
+string_manager = NodePath("../StringManager")
+undo_button = NodePath("Control/HBoxContainer/UndoButton")
+reset_button = NodePath("Control/HBoxContainer/ResetButton")
+share_button = NodePath("Control/HBoxContainer/ShareButton")
+level_label = NodePath("Control/LevelLabel")
+message_label = NodePath("Control/MessageLabel")
+
+[node name="Control" type="Control" parent="UIManager"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="LevelLabel" type="Label" parent="UIManager/Control"]
+layout_mode = 0
+offset_left = 30.0
+offset_top = 30.0
+offset_right = 200.0
+offset_bottom = 80.0
+theme_override_font_sizes/font_size = 32
+text = "Level 1"
+
+[node name="MessageLabel" type="Label" parent="UIManager/Control"]
+modulate = Color(1, 1, 1, 0)
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -300.0
+offset_top = -50.0
+offset_right = 300.0
+offset_bottom = 50.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_font_sizes/font_size = 64
+text = "Clear!"
+horizontal_alignment = 1
+
+[node name="HBoxContainer" type="HBoxContainer" parent="UIManager/Control"]
+layout_mode = 1
+anchors_preset = 2
+anchor_top = 1.0
+anchor_bottom = 1.0
+offset_left = 30.0
+offset_top = -100.0
+offset_right = 380.0
+offset_bottom = -30.0
+grow_vertical = 0
+theme_override_constants/separation = 20
+
+[node name="UndoButton" type="Button" parent="UIManager/Control/HBoxContainer"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 28
+text = " Undo "
+
+[node name="ResetButton" type="Button" parent="UIManager/Control/HBoxContainer"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 28
+text = " Reset "
+
+[node name="ShareButton" type="Button" parent="UIManager/Control/HBoxContainer"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 28
+text = " Share "
