@@ -7,9 +7,11 @@ class_name UIManager extends CanvasLayer
 @export var level_label: Label
 @export var message_label: Label
 
-@onready var goal_panel: PanelContainer = $Control/GoalPanel
-@onready var goal_texture: TextureRect = $Control/GoalPanel/VBoxContainer/GoalTextureRect
-@onready var moves_label: Label = $Control/MovesLabel # Assuming added to tscn
+@onready var goal_panel: PanelContainer = $Control/HeaderHBox/GoalPanel
+@onready var goal_texture: TextureRect = $Control/HeaderHBox/GoalPanel/VBoxContainer/GoalTextureRect
+@onready var moves_label: Label = $Control/HeaderHBox/InfoPanel/InfoVBox/MovesLabel
+@onready var clear_dim_rect: ColorRect = $Control/ClearDimRect
+@onready var transition_rect: ColorRect = $Control/TransitionRect
 
 # リセット用に現在のレベルの初期状態を保持
 var _current_initial_state: Array[int] = [0, 4, 5, 9]
@@ -33,40 +35,48 @@ var settings_btn: Button
 var hint_button: Button
 
 func _ready() -> void:
+	# 画面遷移アニメーション
+	transition_rect.show()
+	transition_rect.modulate.a = 1.0
+	var trans_tween = create_tween()
+	trans_tween.tween_property(transition_rect, "modulate:a", 0.0, 0.5).set_trans(Tween.TRANS_SINE)
+	trans_tween.tween_callback(transition_rect.hide)
+
+	goal_panel.rotation = 0.05 # ポラロイド風に少し傾ける
+	
 	_setup_dynamic_nodes()
 	_setup_floating_menus()
+	
 	if undo_button:
-		undo_button.text = "↩ Undo"
 		_setup_button_animations(undo_button)
 		undo_button.pressed.connect(_on_undo_pressed)
 	if reset_button:
-		reset_button.text = "↺ Reset"
 		_setup_button_animations(reset_button)
 		reset_button.pressed.connect(_on_reset_pressed)
 	if share_button:
-		share_button.text = "🔗 Share"
 		_setup_button_animations(share_button)
 		share_button.pressed.connect(_on_share_pressed)
+		share_button.hide() # 初期状態ではメインUIのシェアボタンを隠す
 		
 	if message_label:
 		message_label.text = ""
 		message_label.modulate.a = 0.0
 		message_label.scale = Vector2(0.5, 0.5)
 	
-	share_button.hide() # 初期状態ではメインUIのシェアボタンを隠す
-	
 	hint_button = Button.new()
-	hint_button.text = " 💡 Hint "
-	hint_button.add_theme_font_size_override("font_size", 28)
-	$Control/HBoxContainer.add_child(hint_button)
-	$Control/HBoxContainer.move_child(hint_button, 0) # Undoの左に配置
+	hint_button.text = "💡\nHint"
+	hint_button.add_theme_font_size_override("font_size", 24)
+	$Control/FooterHBox.add_child(hint_button)
+	$Control/FooterHBox.move_child(hint_button, 0)
 	hint_button.pressed.connect(func(): hint_requested.emit())
 	
 	_apply_premium_styles()
 
 func _setup_floating_menus() -> void:
 	var menu_hbox = HBoxContainer.new()
-	menu_hbox.position = Vector2(30, 150)
+	# 右下にフローティング配置
+	menu_hbox.set_anchors_preset(Control.PRESET_BOTTOM_RIGHT)
+	menu_hbox.position = Vector2(1150, 620)
 	menu_hbox.add_theme_constant_override("separation", 15)
 	$Control.add_child(menu_hbox)
 
@@ -100,10 +110,9 @@ func _setup_floating_menus() -> void:
 	)
 	menu_hbox.add_child(ingame_share_btn)
 	
-	# シェアパネル
 	share_panel = PanelContainer.new()
 	share_panel.visible = false
-	share_panel.position = Vector2(30, 220)
+	share_panel.position = Vector2(850, 520)
 	var share_vbox = VBoxContainer.new()
 	share_panel.add_child(share_vbox)
 	
@@ -119,11 +128,10 @@ func _setup_floating_menus() -> void:
 	
 	$Control.add_child(share_panel)
 	
-	# 設定パネル
 	settings_panel = PanelContainer.new()
 	settings_panel.visible = false
 	settings_panel.custom_minimum_size = Vector2(300, 200)
-	settings_panel.position = Vector2(30, 220)
+	settings_panel.position = Vector2(850, 400)
 	var set_vbox = VBoxContainer.new()
 	settings_panel.add_child(set_vbox)
 	
@@ -163,7 +171,6 @@ func _setup_floating_menus() -> void:
 	$Control.add_child(settings_panel)
 
 func _setup_dynamic_nodes() -> void:
-	# 左下の紙吹雪
 	var p_left = CPUParticles2D.new()
 	p_left.emitting = false
 	p_left.one_shot = true
@@ -182,14 +189,12 @@ func _setup_dynamic_nodes() -> void:
 	p_left.color_initial_ramp = grad
 	add_child(p_left)
 	
-	# 右下の紙吹雪
 	var p_right = p_left.duplicate()
 	p_right.position = Vector2(1280, 720)
 	p_right.direction = Vector2(-1, -1.5).normalized()
 	add_child(p_right)
 	
-	clear_particles = p_left # 参照用 (片方のみ)
-	# もう片方も再生できるようにカスタムプロパティをセットするか、両方をグループに入れる
+	clear_particles = p_left
 	clear_particles.set_meta("partner", p_right)
 	
 	clear_sound = AudioStreamPlayer.new()
@@ -241,7 +246,7 @@ func _setup_dynamic_nodes() -> void:
 		guide_toggled.emit(toggled_on)
 	)
 	$Control.add_child(guide_toggle_button)
-	guide_toggle_button.position = Vector2(30, 90)
+	guide_toggle_button.position = Vector2(30, 20) # Headerの下あたりに配置
 	guide_toggle_button.add_theme_font_size_override("font_size", 24)
 	guide_toggle_button.add_theme_color_override("font_color", Color(0.4, 0.4, 0.4))
 	guide_toggle_button.add_theme_color_override("font_pressed_color", Color(0.2, 0.2, 0.2))
@@ -264,13 +269,12 @@ func _setup_dynamic_nodes() -> void:
 		goal_texture.hide()
 
 func _apply_premium_styles() -> void:
-	# Create a shared StyleBox for buttons
 	var btn_style = StyleBoxFlat.new()
-	btn_style.bg_color = Color(0.92, 0.62, 0.75, 0.95) # Sophisticated Rose
-	btn_style.corner_radius_top_left = 24
-	btn_style.corner_radius_top_right = 24
-	btn_style.corner_radius_bottom_left = 24
-	btn_style.corner_radius_bottom_right = 24
+	btn_style.bg_color = Color(0.92, 0.62, 0.75, 0.95)
+	btn_style.corner_radius_top_left = 32
+	btn_style.corner_radius_top_right = 32
+	btn_style.corner_radius_bottom_left = 32
+	btn_style.corner_radius_bottom_right = 32
 	btn_style.shadow_color = Color(0.8, 0.35, 0.5, 0.3)
 	btn_style.shadow_size = 4
 	btn_style.content_margin_left = 20
@@ -279,7 +283,7 @@ func _apply_premium_styles() -> void:
 	btn_style.content_margin_bottom = 10
 	
 	var btn_hover = btn_style.duplicate()
-	btn_hover.bg_color = Color(0.96, 0.72, 0.82, 1.0) # Lighter rose
+	btn_hover.bg_color = Color(0.96, 0.72, 0.82, 1.0)
 	
 	for btn in [hint_button, undo_button, reset_button, share_button, settings_btn, ingame_share_btn]:
 		if btn:
@@ -289,7 +293,7 @@ func _apply_premium_styles() -> void:
 			btn.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
 			btn.add_theme_color_override("font_color", Color.WHITE)
 			btn.add_theme_constant_override("outline_size", 4)
-			btn.add_theme_color_override("font_outline_color", Color(0.7, 0.4, 0.5, 0.8)) # Deeper outline
+			btn.add_theme_color_override("font_outline_color", Color(0.7, 0.4, 0.5, 0.8))
 			btn.add_theme_color_override("font_hover_color", Color.WHITE)
 			btn.add_theme_color_override("icon_normal_color", Color.WHITE)
 			btn.add_theme_color_override("icon_pressed_color", Color.WHITE)
@@ -297,37 +301,43 @@ func _apply_premium_styles() -> void:
 			if btn == settings_btn or btn == ingame_share_btn:
 				_setup_button_animations(btn)
 	
-	if level_label:
-		var lbl_style = StyleBoxFlat.new()
-		lbl_style.bg_color = Color(0.55, 0.75, 0.9, 0.95) # Sleek blue
-		lbl_style.corner_radius_top_left = 20
-		lbl_style.corner_radius_top_right = 20
-		lbl_style.corner_radius_bottom_left = 20
-		lbl_style.corner_radius_bottom_right = 20
-		lbl_style.shadow_color = Color(0.3, 0.5, 0.8, 0.4)
-		lbl_style.shadow_size = 6
-		lbl_style.content_margin_left = 24
-		lbl_style.content_margin_right = 24
-		lbl_style.content_margin_top = 8
-		lbl_style.content_margin_bottom = 8
-		level_label.add_theme_stylebox_override("normal", lbl_style)
-		level_label.add_theme_color_override("font_color", Color.WHITE)
-		# Add outline for text
-		level_label.add_theme_constant_override("outline_size", 4)
-		level_label.add_theme_color_override("font_outline_color", Color(0.25, 0.45, 0.7, 0.8))
+	# InfoPanel (Top Left) Style
+	if has_node("Control/HeaderHBox/InfoPanel"):
+		var info_panel = $Control/HeaderHBox/InfoPanel
+		var info_style = StyleBoxFlat.new()
+		info_style.bg_color = Color(1.0, 1.0, 1.0, 0.8)
+		info_style.corner_radius_top_left = 16
+		info_style.corner_radius_top_right = 16
+		info_style.corner_radius_bottom_left = 16
+		info_style.corner_radius_bottom_right = 16
+		info_style.shadow_color = Color(0, 0, 0, 0.1)
+		info_style.shadow_size = 4
+		info_style.content_margin_left = 20
+		info_style.content_margin_right = 20
+		info_style.content_margin_top = 10
+		info_style.content_margin_bottom = 10
+		info_panel.add_theme_stylebox_override("panel", info_style)
+
+		# Make Level/Moves Labels dark for contrast against white panel
+		if level_label:
+			level_label.add_theme_color_override("font_color", Color(0.3, 0.3, 0.3))
+		if moves_label:
+			moves_label.add_theme_color_override("font_color", Color(0.4, 0.4, 0.4))
 		
+	# Polaroid Style for GoalPanel
 	var panel_style = StyleBoxFlat.new()
-	panel_style.bg_color = Color(1.0, 0.98, 0.9, 0.95) # Cream color
-	panel_style.corner_radius_top_left = 24
-	panel_style.corner_radius_top_right = 24
-	panel_style.corner_radius_bottom_left = 24
-	panel_style.corner_radius_bottom_right = 24
-	panel_style.shadow_color = Color(0.8, 0.8, 0.8, 0.5)
-	panel_style.shadow_size = 8
+	panel_style.bg_color = Color(1.0, 1.0, 1.0, 1.0) # Pure white for polaroid frame
+	panel_style.corner_radius_top_left = 8
+	panel_style.corner_radius_top_right = 8
+	panel_style.corner_radius_bottom_left = 8
+	panel_style.corner_radius_bottom_right = 8
+	panel_style.shadow_color = Color(0.0, 0.0, 0.0, 0.15)
+	panel_style.shadow_size = 12
+	panel_style.shadow_offset = Vector2(2, 6)
 	panel_style.content_margin_left = 16
 	panel_style.content_margin_right = 16
 	panel_style.content_margin_top = 16
-	panel_style.content_margin_bottom = 16
+	panel_style.content_margin_bottom = 32 # extra bottom margin for polaroid
 
 	if goal_panel:
 		goal_panel.add_theme_stylebox_override("panel", panel_style)
@@ -397,7 +407,6 @@ func update_level_text(level_num: int, level_name: String = "") -> void:
 func update_moves_display(moves: int, optimal: int) -> void:
 	if not moves_label:
 		return
-	
 	var stars = 3
 	if moves > optimal:
 		if moves <= optimal + 2:
@@ -423,16 +432,23 @@ func set_result_stars(stars: int) -> void:
 		var total = 0
 		if GameSave: total = GameSave.total_stars
 		result_stars_label.text = stars_text + "\n累計: " + str(total) + " ★"
-		result_stars_label.add_theme_font_size_override("font_size", 48) # 累計を入れるため少し小さくする
+		result_stars_label.add_theme_font_size_override("font_size", 48)
+
+func _animate_goal_bounce() -> void:
+	if goal_panel:
+		goal_panel.scale = Vector2.ZERO
+		goal_panel.pivot_offset = goal_panel.size / 2.0
+		var tw = create_tween()
+		tw.tween_property(goal_panel, "scale", Vector2.ONE, 0.6).set_trans(Tween.TRANS_BOUNCE).set_ease(Tween.EASE_OUT)
 
 func set_goal_texture(texture: Texture2D) -> void:
 	if goal_texture:
 		goal_texture.texture = texture
 		if texture:
 			goal_texture.show()
-			# 画像がある場合は、線のTargetDrawerを隠す（オプション）
 			if ui_target_drawer:
 				ui_target_drawer.hide()
+			_animate_goal_bounce()
 		else:
 			goal_texture.hide()
 			if ui_target_drawer:
@@ -441,8 +457,9 @@ func set_goal_texture(texture: Texture2D) -> void:
 func set_goal_sequence(sequence: Array[int]) -> void:
 	if ui_target_drawer:
 		ui_target_drawer.set_target(sequence)
+		if goal_texture and not goal_texture.visible:
+			_animate_goal_bounce()
 
-# MainControllerから現在のレベルの初期状態を受け取る
 func set_initial_state(state: Array[int]) -> void:
 	_current_initial_state = state.duplicate()
 
@@ -456,6 +473,10 @@ func play_clear_animation() -> void:
 		clear_particles.emitting = true
 		if clear_particles.has_meta("partner"):
 			clear_particles.get_meta("partner").emitting = true
+	
+	if clear_dim_rect:
+		var dim_tw = create_tween()
+		dim_tw.tween_property(clear_dim_rect, "color:a", 0.6, 0.5).set_trans(Tween.TRANS_SINE)
 		
 	if message_label:
 		message_label.text = "クリア！"
@@ -463,13 +484,11 @@ func play_clear_animation() -> void:
 		message_label.scale = Vector2.ZERO
 		message_label.rotation = -0.2
 		message_label.modulate.a = 1.0
-		# 初期色を白にする
 		message_label.self_modulate = Color(1, 1, 1, 1)
 		
 		var tween = create_tween().set_parallel(true)
 		tween.tween_property(message_label, "scale", Vector2(1.3, 1.3), 0.6).set_trans(Tween.TRANS_ELASTIC).set_ease(Tween.EASE_OUT)
 		tween.tween_property(message_label, "rotation", 0.05, 0.4).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
-		# テキストの色を黄色がかったゴールドにフェードさせる
 		tween.tween_property(message_label, "self_modulate", Color(1.0, 0.9, 0.4), 0.5)
 		
 		var seq = create_tween()
@@ -482,7 +501,7 @@ func show_result_panel() -> void:
 	if result_panel:
 		result_panel.show()
 		result_panel.scale = Vector2.ZERO
-		result_panel.pivot_offset = Vector2(200, 150) # Half of 400x300
+		result_panel.pivot_offset = Vector2(200, 150)
 		var tween = create_tween()
 		tween.tween_property(result_panel, "scale", Vector2.ONE, 0.5).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 
@@ -491,21 +510,35 @@ func _on_next_pressed() -> void:
 		result_panel.hide()
 	if message_label:
 		message_label.modulate.a = 0.0
-	next_level_requested.emit()
+	if clear_dim_rect:
+		var tw = create_tween()
+		tw.tween_property(clear_dim_rect, "color:a", 0.0, 0.3)
+	
+	# Transition before next level
+	if transition_rect:
+		transition_rect.show()
+		var tw = create_tween()
+		tw.tween_property(transition_rect, "modulate:a", 1.0, 0.3)
+		tw.tween_callback(func():
+			next_level_requested.emit()
+			# will fade out again when new level loads if we reset scene or we can just fade out here
+			var tw2 = create_tween()
+			tw2.tween_property(transition_rect, "modulate:a", 0.0, 0.5)
+			tw2.tween_callback(transition_rect.hide)
+		)
+	else:
+		next_level_requested.emit()
 
 func show_message(msg: String) -> void:
 	if message_label:
 		message_label.text = msg
-		# Reset state for animation
 		message_label.scale = Vector2(0.5, 0.5)
 		message_label.modulate.a = 0.0
 		
 		var tween = create_tween().set_parallel(true)
-		# Pop in
 		tween.tween_property(message_label, "scale", Vector2(1.0, 1.0), 0.5).set_trans(Tween.TRANS_ELASTIC).set_ease(Tween.EASE_OUT)
 		tween.tween_property(message_label, "modulate:a", 1.0, 0.3).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
 		
-		# Fade out after delay
 		tween.chain().tween_interval(1.5)
 		var fade_out_tween = create_tween().set_parallel(true)
 		fade_out_tween.tween_property(message_label, "scale", Vector2(1.1, 1.1), 0.4).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN)
@@ -517,12 +550,9 @@ func _on_undo_pressed() -> void:
 
 func _on_reset_pressed() -> void:
 	if string_manager:
-		# 初期状態の配列で履歴を持たずにリセット（これはやり直しではなく状態の修復用とするか）
-		# ユーザー指示: リセットで手数は最初からやり直されるべき
 		string_manager.reset_to_initial(_current_initial_state.duplicate())
 
 func _on_save_image_pressed() -> void:
-	# ViewportのキャプチャをとってダウンロードするJSを実行
 	if OS.has_feature("web"):
 		JavaScriptBridge.eval("alert('画像の保存機能はWebブラウザの制限により準備中です。スクショ等をご利用ください。');")
 	else:
@@ -534,13 +564,10 @@ func _on_volume_changed(val: float) -> void:
 		AudioServer.set_bus_volume_db(bus_idx, linear_to_db(val / 100.0))
 
 func _on_share_pressed() -> void:
-	# WebGLでのみ動作するJavaScript呼び出し
 	if OS.has_feature("web"):
 		var text = "「あやとりパズル -ゆびさきキャンバス-」で遊びました！"
-		var url = "https://unityroom.com/games/ayatori_puzzle" # 仮のURL
+		var url = "https://unityroom.com/games/ayatori_puzzle"
 		var x_intent = "https://twitter.com/intent/tweet?text=" + text.uri_encode() + "&url=" + url.uri_encode()
-		
-		# 新しいタブでXのシェア画面を開く
 		JavaScriptBridge.eval("window.open('%s', '_blank');" % x_intent)
 	else:
 		print("X Share: ", "「あやとりパズル -ゆびさきキャンバス-」で遊びました！")

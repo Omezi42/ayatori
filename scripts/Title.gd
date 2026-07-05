@@ -74,10 +74,21 @@ func _apply_button_styles(btn: Button, normal_style: StyleBoxFlat, pressed_style
 func _on_start_pressed() -> void:
 	if FirebaseManager.has_meta("ugc_target"):
 		FirebaseManager.remove_meta("ugc_target")
-	get_tree().change_scene_to_file("res://scenes/Main.tscn")
+	_transition_to_scene("res://scenes/Main.tscn")
 
 func _on_create_pressed() -> void:
-	get_tree().change_scene_to_file("res://scenes/LevelEditor.tscn")
+	_transition_to_scene("res://scenes/LevelEditor.tscn")
+
+func _transition_to_scene(path: String) -> void:
+	var tr = get_node_or_null("TransitionRect")
+	if tr:
+		tr.show()
+		tr.modulate.a = 0.0
+		var tw = create_tween()
+		tw.tween_property(tr, "modulate:a", 1.0, 0.4)
+		tw.tween_callback(func(): get_tree().change_scene_to_file(path))
+	else:
+		get_tree().change_scene_to_file(path)
 
 func _on_load_pressed() -> void:
 	var code = $ButtonContainer/LoadContainer/CodeInput.text.strip_edges()
@@ -90,7 +101,7 @@ func _on_level_loaded(target_sequence: Array) -> void:
 	$ButtonContainer/LoadContainer/LoadButton.text = "コードで遊ぶ"
 	$ButtonContainer/LoadContainer/LoadButton.disabled = false
 	FirebaseManager.set_meta("ugc_target", target_sequence)
-	get_tree().change_scene_to_file("res://scenes/Main.tscn")
+	_transition_to_scene("res://scenes/Main.tscn")
 
 func _on_load_failed(err_msg: String) -> void:
 	$ButtonContainer/LoadContainer/LoadButton.text = "失敗"
