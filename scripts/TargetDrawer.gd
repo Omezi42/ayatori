@@ -3,24 +3,20 @@ class_name TargetDrawer extends Control
 var target_sequence: Array[int] = []
 
 # 固定された指の座標
-var finger_positions: Array[Vector2] = [
-	Vector2(640, 110),
-	Vector2(786, 158),
-	Vector2(877, 283),
-	Vector2(877, 437),
-	Vector2(786, 562),
-	Vector2(640, 610),
-	Vector2(494, 562),
-	Vector2(403, 437),
-	Vector2(403, 283),
-	Vector2(494, 158)
-]
+	pass
+
+var layout_id: int = 0
+
+func set_layout(new_layout_id: int) -> void:
+	layout_id = new_layout_id
+	queue_redraw()
 
 func set_target(sequence: Array[int]) -> void:
 	target_sequence = sequence
 	queue_redraw()
 
 func _draw() -> void:
+	var finger_positions = PinLayout.get_positions(layout_id)
 	# すべてのピンを薄く描画
 	for pos in finger_positions:
 		draw_circle(pos, 15.0, Color(0.8, 0.8, 0.8, 0.5))

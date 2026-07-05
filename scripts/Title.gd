@@ -24,15 +24,12 @@ func _ready() -> void:
 	secondary_pressed.content_margin_bottom -= 6
 	
 	_apply_button_styles($ButtonContainer/CreateButton, secondary_normal, secondary_pressed)
-	_apply_button_styles($ButtonContainer/LoadContainer/LoadButton, secondary_normal, secondary_pressed)
+	_apply_button_styles($ButtonContainer/SearchButton, secondary_normal, secondary_pressed)
 	
 	# シグナルの接続
 	$ButtonContainer/StartButton.pressed.connect(_on_start_pressed)
 	$ButtonContainer/CreateButton.pressed.connect(_on_create_pressed)
-	$ButtonContainer/LoadContainer/LoadButton.pressed.connect(_on_load_pressed)
-	
-	FirebaseManager.load_completed.connect(_on_level_loaded)
-	FirebaseManager.load_failed.connect(_on_load_failed)
+	$ButtonContainer/SearchButton.pressed.connect(_on_search_pressed)
 	
 	# ロゴのアニメーション（ふわふわ浮遊させる）
 	var logo = $LogoContainer
@@ -90,22 +87,5 @@ func _transition_to_scene(path: String) -> void:
 	else:
 		get_tree().change_scene_to_file(path)
 
-func _on_load_pressed() -> void:
-	var code = $ButtonContainer/LoadContainer/CodeInput.text.strip_edges()
-	if code.length() > 0:
-		$ButtonContainer/LoadContainer/LoadButton.text = "読込中..."
-		$ButtonContainer/LoadContainer/LoadButton.disabled = true
-		FirebaseManager.load_level(code)
-
-func _on_level_loaded(target_sequence: Array) -> void:
-	$ButtonContainer/LoadContainer/LoadButton.text = "コードで遊ぶ"
-	$ButtonContainer/LoadContainer/LoadButton.disabled = false
-	FirebaseManager.set_meta("ugc_target", target_sequence)
-	_transition_to_scene("res://scenes/Main.tscn")
-
-func _on_load_failed(err_msg: String) -> void:
-	$ButtonContainer/LoadContainer/LoadButton.text = "失敗"
-	$ButtonContainer/LoadContainer/LoadButton.disabled = false
-	print("Load Error: ", err_msg)
-	await get_tree().create_timer(1.5).timeout
-	$ButtonContainer/LoadContainer/LoadButton.text = "コードで遊ぶ"
+func _on_search_pressed() -> void:
+	_transition_to_scene("res://scenes/LevelBrowser.tscn")

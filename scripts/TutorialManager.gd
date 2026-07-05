@@ -35,6 +35,29 @@ func show_hint(from_pos: Vector2, to_pos: Vector2) -> void:
 	# 3回ループしたら消える
 	tween.finished.connect(func(): hand_node.modulate.a = 0.0)
 
+func show_unhook_hint(pos: Vector2) -> void:
+	if tween and tween.is_running():
+		tween.kill()
+		
+	hand_node.position = pos
+	hand_node.modulate.a = 0.0
+	hand_node.scale = Vector2(1, 1)
+	
+	tween = create_tween().set_loops(3)
+	# フェードイン
+	tween.tween_property(hand_node, "modulate:a", 1.0, 0.3)
+	# 少し縮んで「タップ」表現
+	tween.tween_property(hand_node, "scale", Vector2(0.7, 0.7), 0.15)
+	# タップしたまま少し待つ
+	tween.tween_interval(0.3)
+	# 離す表現
+	tween.tween_property(hand_node, "scale", Vector2(1, 1), 0.15)
+	# フェードアウト
+	tween.tween_property(hand_node, "modulate:a", 0.0, 0.3)
+	
+	# 3回ループしたら消える
+	tween.finished.connect(func(): hand_node.modulate.a = 0.0)
+
 func _draw() -> void:
 	pass
 	

@@ -160,4 +160,14 @@ func _set_tension(is_tense: bool) -> void:
 	
 	var tween = create_tween().set_parallel(true).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
 	tween.tween_property(line, "width", target_width, 0.15)
-	tween.tween_property(line.material, "shader_parameter/base_color", target_color, 0.15)
+	
+	var current_color: Color = target_color
+	if line.material is ShaderMaterial:
+		var current_param = (line.material as ShaderMaterial).get_shader_parameter("base_color")
+		if current_param != null and current_param is Color:
+			current_color = current_param
+		
+		tween.tween_method(func(col: Color):
+			if line and line.material and line.material is ShaderMaterial:
+				(line.material as ShaderMaterial).set_shader_parameter("base_color", col)
+		, current_color, target_color, 0.15)

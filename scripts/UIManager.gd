@@ -7,11 +7,12 @@ class_name UIManager extends CanvasLayer
 @export var level_label: Label
 @export var message_label: Label
 
-@onready var goal_panel: PanelContainer = $Control/HeaderHBox/GoalPanel
-@onready var goal_texture: TextureRect = $Control/HeaderHBox/GoalPanel/VBoxContainer/GoalTextureRect
-@onready var moves_label: Label = $Control/HeaderHBox/InfoPanel/InfoVBox/MovesLabel
-@onready var clear_dim_rect: ColorRect = $Control/ClearDimRect
-@onready var transition_rect: ColorRect = $Control/TransitionRect
+@export var moves_label: Label
+
+@onready var goal_panel: PanelContainer = get_node_or_null("Control/HeaderHBox/GoalPanel")
+@onready var goal_texture: TextureRect = get_node_or_null("Control/HeaderHBox/GoalPanel/VBoxContainer/GoalTextureRect")
+@onready var clear_dim_rect: ColorRect = get_node_or_null("Control/ClearDimRect")
+@onready var transition_rect: ColorRect = get_node_or_null("Control/TransitionRect")
 
 # リセット用に現在のレベルの初期状態を保持
 var _current_initial_state: Array[int] = [0, 4, 5, 9]
@@ -28,6 +29,7 @@ var result_stars_label: Label
 
 var ui_target_drawer: TargetDrawer
 var guide_enabled: bool = false
+
 var settings_panel: PanelContainer
 var share_panel: PanelContainer
 var ingame_share_btn: Button
@@ -36,13 +38,15 @@ var hint_button: Button
 
 func _ready() -> void:
 	# 画面遷移アニメーション
-	transition_rect.show()
-	transition_rect.modulate.a = 1.0
-	var trans_tween = create_tween()
-	trans_tween.tween_property(transition_rect, "modulate:a", 0.0, 0.5).set_trans(Tween.TRANS_SINE)
-	trans_tween.tween_callback(transition_rect.hide)
+	if transition_rect:
+		transition_rect.show()
+		transition_rect.modulate.a = 1.0
+		var trans_tween = create_tween()
+		trans_tween.tween_property(transition_rect, "modulate:a", 0.0, 0.5).set_trans(Tween.TRANS_SINE)
+		trans_tween.tween_callback(transition_rect.hide)
 
-	goal_panel.rotation = 0.05 # ポラロイド風に少し傾ける
+	if goal_panel:
+		goal_panel.rotation = 0.05 # ポラロイド風に少し傾ける
 	
 	_setup_dynamic_nodes()
 	_setup_floating_menus()
@@ -66,8 +70,10 @@ func _ready() -> void:
 	hint_button = Button.new()
 	hint_button.text = "💡\nHint"
 	hint_button.add_theme_font_size_override("font_size", 24)
-	$Control/FooterHBox.add_child(hint_button)
-	$Control/FooterHBox.move_child(hint_button, 0)
+	var footer = get_node_or_null("Control/FooterHBox")
+	if footer:
+		footer.add_child(hint_button)
+		footer.move_child(hint_button, 0)
 	hint_button.pressed.connect(func(): hint_requested.emit())
 	
 	_apply_premium_styles()

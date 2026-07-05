@@ -79,26 +79,14 @@ custom_minimum_size = Vector2(360, 80)
 layout_mode = 2
 size_flags_horizontal = 4
 theme_override_font_sizes/font_size = 32
-text = "お題をつくる"
+text = "フリーモード"
 
-[node name="LoadContainer" type="HBoxContainer" parent="ButtonContainer"]
+[node name="SearchButton" type="Button" parent="ButtonContainer"]
 custom_minimum_size = Vector2(360, 80)
 layout_mode = 2
 size_flags_horizontal = 4
-theme_override_constants/separation = 10
-
-[node name="CodeInput" type="LineEdit" parent="ButtonContainer/LoadContainer"]
-layout_mode = 2
-size_flags_horizontal = 3
-theme_override_font_sizes/font_size = 24
-placeholder_text = "共有コードを入力"
-alignment = 1
-
-[node name="LoadButton" type="Button" parent="ButtonContainer/LoadContainer"]
-custom_minimum_size = Vector2(160, 0)
-layout_mode = 2
-theme_override_font_sizes/font_size = 24
-text = "コードで遊ぶ"
+theme_override_font_sizes/font_size = 32
+text = "お題をさがす"
 
 [node name="TransitionRect" type="ColorRect" parent="."]
 visible = false

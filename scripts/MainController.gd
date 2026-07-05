@@ -70,6 +70,9 @@ func _ready() -> void:
 		
 		if FirebaseManager.has_meta("ugc_target"):
 			var seq = FirebaseManager.get_meta("ugc_target")
+			var layout_id = 0
+			if FirebaseManager.has_meta("ugc_layout_id"):
+				layout_id = FirebaseManager.get_meta("ugc_layout_id")
 			var ld = LevelData.new()
 			ld.level_name = "ユーザー作成ステージ"
 			var typed_seq: Array[int] = []
@@ -78,6 +81,7 @@ func _ready() -> void:
 			ld.target_sequence = typed_seq
 			ld.initial_sequence = [0, 4, 5, 9]
 			ld.optimal_moves = -1
+			ld.layout_id = layout_id
 			_on_level_changed(-1, ld)
 		else:
 			level_manager.load_level(0)
@@ -105,6 +109,31 @@ func _on_guide_toggled(is_visible: bool) -> void:
 		guide_lines.visible = is_visible
 
 func _on_level_changed(level_idx: int, level_data: LevelData) -> void:
+	# レイアウトの適用
+	var layout_id = level_data.layout_id
+	var bg_rect = get_node_or_null("HandBackground")
+	if bg_rect and bg_rect.has_method("set_layout_id"):
+		# Wait, I didn't add set_layout_id, it's just a property.
+		bg_rect.layout_id = layout_id
+		bg_rect.queue_redraw()
+	elif bg_rect:
+		bg_rect.set("layout_id", layout_id)
+		if bg_rect.has_method("queue_redraw"):
+			bg_rect.queue_redraw()
+			
+	if guide_lines:
+		if guide_lines.has_method("set_layout"):
+			guide_lines.set_layout(layout_id)
+			
+	var positions = PinLayout.get_positions(layout_id)
+	string_drawer.finger_positions.clear()
+	for node in get_tree().get_nodes_in_group("fingers"):
+		if node is FingerNode:
+			var id = node.finger_id
+			if id >= 0 and id < positions.size():
+				node.global_position = positions[id]
+				string_drawer.register_finger(id, positions[id])
+
 	# 初期状態を保持
 	_current_initial_state = level_data.initial_sequence.duplicate()
 	
@@ -112,9 +141,9 @@ func _on_level_changed(level_idx: int, level_data: LevelData) -> void:
 	string_manager.target_string = level_data.target_sequence.duplicate()
 	string_manager.reset_to_initial(_current_initial_state.duplicate())
 	
-	# 最短手数を計算または取得
+	# 最短手数を取得
 	if level_data.optimal_moves < 0:
-		_current_optimal_moves = string_manager.calculate_optimal_moves(_current_initial_state, level_data.target_sequence)
+		_current_optimal_moves = max(1, level_data.target_sequence.size() - 2) # 未設定時の簡易フォールバック
 	else:
 		_current_optimal_moves = level_data.optimal_moves
 		
@@ -224,21 +253,22 @@ func _handle_game_clear() -> void:
 
 func _show_hint() -> void:
 	if current_state != GameState.PLAYING: return
-	var next_state = string_manager.get_next_hint(string_manager.current_string, string_manager.target_string)
-	if next_state.is_empty(): return
+	var hint = string_manager.get_heuristic_hint(string_manager.current_string, string_manager.target_string)
+	if hint.is_empty(): return
 	
-	var added_finger = -1
-	for f in next_state:
-		if not string_manager.current_string.has(f):
-			added_finger = f
-			break
+	if hint["type"] == "hook":
+		var added_finger = hint["finger"]
+		var arr = string_manager.current_string
+		var from_pos = Vector2(640, 360)
+		if arr.size() > 1:
+			# 適当に最初の2つの指の中間から引っ張るように見せる
+			from_pos = (string_drawer.finger_positions[arr[0]] + string_drawer.finger_positions[arr[1]]) / 2.0
 			
-	if added_finger == -1: return
-	
-	var arr = string_manager.current_string
-	var from_pos = Vector2(640, 360)
-	if arr.size() > 1:
-		from_pos = (string_drawer.finger_positions[arr[0]] + string_drawer.finger_positions[arr[1]]) / 2.0
-		
-	if string_drawer.finger_positions.has(added_finger):
-		tutorial_manager.show_hint(from_pos, string_drawer.finger_positions[added_finger])
+		if string_drawer.finger_positions.has(added_finger):
+			tutorial_manager.show_hint(from_pos, string_drawer.finger_positions[added_finger])
+			
+	elif hint["type"] == "unhook":
+		var removed_finger = hint["finger"]
+		if string_drawer.finger_positions.has(removed_finger):
+			if tutorial_manager.has_method("show_unhook_hint"):
+				tutorial_manager.show_unhook_hint(string_drawer.finger_positions[removed_finger])
