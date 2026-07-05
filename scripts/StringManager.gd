@@ -146,6 +146,61 @@ func calculate_optimal_moves(initial_state: Array[int], target_state: Array[int]
 				
 	return MAX_DEPTH # 見つからなかった場合のフォールバック
 
+# ヒント用：次の一手（状態）を返す
+func get_next_hint(initial_state: Array[int], target_state: Array[int]) -> Array[int]:
+	if is_state_matching_target(initial_state, target_state):
+		return []
+		
+	var queue: Array = []
+	var visited: Dictionary = {}
+	var parent_map: Dictionary = {}
+	
+	var start_norm = _normalize_sequence(initial_state)
+	var start_hash = _hash_state(start_norm)
+	
+	queue.append({"state": start_norm, "depth": 0})
+	visited[start_hash] = true
+	
+	var MAX_DEPTH = 10
+	var found_target_hash = ""
+	
+	while not queue.is_empty():
+		var current = queue.pop_front()
+		var state: Array[int] = current["state"]
+		var depth: int = current["depth"]
+		var curr_hash = _hash_state(state)
+		
+		if is_state_matching_target(state, target_state):
+			found_target_hash = curr_hash
+			break
+			
+		if depth >= MAX_DEPTH:
+			continue
+			
+		var next_states = _generate_next_states(state)
+		for next_state in next_states:
+			var norm = _normalize_sequence(next_state)
+			var h = _hash_state(norm)
+			if not visited.has(h):
+				visited[h] = true
+				parent_map[h] = {"parent_hash": curr_hash, "state": norm.duplicate()}
+				queue.append({"state": norm, "depth": depth + 1})
+				
+	if found_target_hash == "":
+		return []
+		
+	var curr = found_target_hash
+	var result_state = []
+	# 逆算してstart_hashの1つ次の状態を見つける
+	while parent_map.has(curr):
+		var p_hash = parent_map[curr]["parent_hash"]
+		if p_hash == start_hash:
+			result_state = parent_map[curr]["state"]
+			break
+		curr = p_hash
+		
+	return result_state
+
 func _hash_state(state: Array[int]) -> String:
 	# 順序に依存しない表現か、単純な文字列化
 	# ※シフトや逆順で同じとみなせる場合は同じハッシュにするのが理想だが、

@@ -20,12 +20,24 @@ signal segment_dropped_on_finger(segment_index: int, finger_id: int)
 const HIT_RADIUS := 25.0        # 線分のヒット判定半径(px)
 const FINGER_DROP_RADIUS := 50.0 # 指ドロップ判定半径(px)
 
+var default_width: float = 16.0
+var dragging_width: float = 10.0
+
 func _ready() -> void:
 	if string_manager:
 		string_manager.string_changed.connect(update_line)
 	
 	if not line:
 		line = $Line2D # フォールバック
+
+	line.width = default_width
+	line.texture_mode = Line2D.LINE_TEXTURE_STRETCH
+	
+	var shader = load("res://resources/string_shader.gdshader")
+	if shader:
+		var mat = ShaderMaterial.new()
+		mat.shader = shader
+		line.material = mat
 
 func _process(_delta: float) -> void:
 	if is_dragging:
@@ -120,6 +132,7 @@ func _try_start_drag(mouse_pos: Vector2) -> void:
 		is_dragging = true
 		dragging_segment_index = best_index
 		current_mouse_pos = mouse_pos
+		_set_tension(true)
 
 # ドラッグ終了時の処理
 func _end_drag(mouse_pos: Vector2) -> void:
@@ -137,4 +150,14 @@ func _end_drag(mouse_pos: Vector2) -> void:
 	# ドラッグ状態をリセット（何もない場所でドロップした場合は元に戻る）
 	is_dragging = false
 	dragging_segment_index = -1
+	_set_tension(false)
 	update_line()
+
+func _set_tension(is_tense: bool) -> void:
+	if not line or not line.material: return
+	var target_width = dragging_width if is_tense else default_width
+	var target_color = Color(1.0, 0.65, 0.85, 1.0) if is_tense else Color(0.96, 0.45, 0.65, 1.0)
+	
+	var tween = create_tween().set_parallel(true).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	tween.tween_property(line, "width", target_width, 0.15)
+	tween.tween_property(line.material, "shader_parameter/base_color", target_color, 0.15)

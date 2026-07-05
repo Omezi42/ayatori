@@ -15,12 +15,16 @@ run/main_scene="res://scenes/Title.tscn"
 config/features=PackedStringArray("4.6", "GL Compatibility")
 config/icon="res://icon.svg"
 
+[autoload]
+
+FirebaseManager="*res://scripts/FirebaseManager.gd"
+GameSave="*res://scripts/GameSave.gd"
+
 [display]
 
 window/size/viewport_width=1280
 window/size/viewport_height=720
 window/stretch/mode="canvas_items"
-window/stretch/aspect="keep"
 
 [physics]
 

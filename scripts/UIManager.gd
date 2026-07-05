@@ -16,6 +16,7 @@ var _current_initial_state: Array[int] = [0, 4, 5, 9]
 
 signal next_level_requested
 signal guide_toggled(is_visible: bool)
+signal hint_requested
 
 var clear_particles: CPUParticles2D
 var clear_sound: AudioStreamPlayer
@@ -29,11 +30,11 @@ var settings_panel: PanelContainer
 var share_panel: PanelContainer
 var ingame_share_btn: Button
 var settings_btn: Button
+var hint_button: Button
 
 func _ready() -> void:
 	_setup_dynamic_nodes()
 	_setup_floating_menus()
-	_apply_premium_styles()
 	if undo_button:
 		undo_button.text = "↩ Undo"
 		_setup_button_animations(undo_button)
@@ -54,7 +55,14 @@ func _ready() -> void:
 	
 	share_button.hide() # 初期状態ではメインUIのシェアボタンを隠す
 	
-	share_button.hide() # 初期状態ではメインUIのシェアボタンを隠す
+	hint_button = Button.new()
+	hint_button.text = " 💡 Hint "
+	hint_button.add_theme_font_size_override("font_size", 28)
+	$Control/HBoxContainer.add_child(hint_button)
+	$Control/HBoxContainer.move_child(hint_button, 0) # Undoの左に配置
+	hint_button.pressed.connect(func(): hint_requested.emit())
+	
+	_apply_premium_styles()
 
 func _setup_floating_menus() -> void:
 	var menu_hbox = HBoxContainer.new()
@@ -133,6 +141,24 @@ func _setup_floating_menus() -> void:
 	vol_slider.value = 50
 	vol_slider.value_changed.connect(_on_volume_changed)
 	set_vbox.add_child(vol_slider)
+	
+	var theme_label = Label.new()
+	theme_label.text = "画面テーマ"
+	theme_label.add_theme_color_override("font_color", Color(0.3, 0.3, 0.3))
+	set_vbox.add_child(theme_label)
+	
+	var theme_btn = OptionButton.new()
+	theme_btn.add_item("通常")
+	theme_btn.add_item("モノクロ")
+	theme_btn.add_item("ダーク")
+	if GameSave: theme_btn.selected = GameSave.current_theme
+	theme_btn.item_selected.connect(func(idx):
+		if GameSave:
+			GameSave.current_theme = idx
+			GameSave.apply_theme()
+			GameSave.save_data()
+	)
+	set_vbox.add_child(theme_btn)
 	
 	$Control.add_child(settings_panel)
 
@@ -255,7 +281,7 @@ func _apply_premium_styles() -> void:
 	var btn_hover = btn_style.duplicate()
 	btn_hover.bg_color = Color(0.96, 0.72, 0.82, 1.0) # Lighter rose
 	
-	for btn in [undo_button, reset_button, share_button, settings_btn, ingame_share_btn]:
+	for btn in [hint_button, undo_button, reset_button, share_button, settings_btn, ingame_share_btn]:
 		if btn:
 			btn.add_theme_stylebox_override("normal", btn_style)
 			btn.add_theme_stylebox_override("hover", btn_hover)
@@ -394,7 +420,10 @@ func set_result_stars(stars: int) -> void:
 			stars_text += "★"
 		for i in range(3 - stars):
 			stars_text += "☆"
-		result_stars_label.text = stars_text
+		var total = 0
+		if GameSave: total = GameSave.total_stars
+		result_stars_label.text = stars_text + "\n累計: " + str(total) + " ★"
+		result_stars_label.add_theme_font_size_override("font_size", 48) # 累計を入れるため少し小さくする
 
 func set_goal_texture(texture: Texture2D) -> void:
 	if goal_texture:

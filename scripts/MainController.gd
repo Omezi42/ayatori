@@ -16,6 +16,9 @@ var guide_lines: TargetDrawer
 var _current_optimal_moves: int = 0
 var _current_stars: int = 0
 
+var motif_drawer: MotifDrawer
+var tutorial_manager: TutorialManager
+
 
 func _ready() -> void:
 	var bg_rect = get_node_or_null("Background")
@@ -41,6 +44,15 @@ func _ready() -> void:
 		bg_rect.add_child(guide_drawer)
 		bg_rect.add_child(guide_lines)
 
+	motif_drawer = load("res://scripts/MotifDrawer.gd").new()
+	add_child(motif_drawer)
+	if string_drawer:
+		move_child(motif_drawer, string_drawer.get_index())
+		
+	tutorial_manager = load("res://scripts/TutorialManager.gd").new()
+	add_child(tutorial_manager)
+	tutorial_manager.main_controller = self
+
 	# 子ノード内のすべてのFingerNodeを検索して接続する
 	for node in get_tree().get_nodes_in_group("fingers"):
 		if node is FingerNode:
@@ -55,7 +67,20 @@ func _ready() -> void:
 	if level_manager:
 		level_manager.level_changed.connect(_on_level_changed)
 		level_manager.game_cleared.connect(_on_game_cleared)
-		level_manager.load_level(0)
+		
+		if FirebaseManager.has_meta("ugc_target"):
+			var seq = FirebaseManager.get_meta("ugc_target")
+			var ld = LevelData.new()
+			ld.level_name = "ユーザー作成ステージ"
+			var typed_seq: Array[int] = []
+			for s in seq:
+				typed_seq.append(int(s))
+			ld.target_sequence = typed_seq
+			ld.initial_sequence = [0, 4, 5, 9]
+			ld.optimal_moves = -1
+			_on_level_changed(-1, ld)
+		else:
+			level_manager.load_level(0)
 	else:
 		# 簡易フォールバック
 		string_manager.reset_to_initial([0, 4, 5, 9])
@@ -67,6 +92,7 @@ func _ready() -> void:
 	if ui_manager:
 		ui_manager.next_level_requested.connect(_on_next_level_requested)
 		ui_manager.guide_toggled.connect(_on_guide_toggled)
+		ui_manager.hint_requested.connect(_show_hint)
 
 func _on_next_level_requested() -> void:
 	if level_manager:
@@ -103,6 +129,9 @@ func _on_level_changed(level_idx: int, level_data: LevelData) -> void:
 	
 	string_drawer.update_line()
 	
+	if motif_drawer:
+		motif_drawer.modulate.a = 0.0
+		
 	if ui_manager:
 		ui_manager.update_level_text(level_idx + 1, level_data.level_name)
 		if ui_manager.has_method("set_goal_sequence"):
@@ -116,16 +145,20 @@ func _on_level_changed(level_idx: int, level_data: LevelData) -> void:
 	if guide_drawer:
 		guide_drawer.texture = level_data.target_image
 		if ui_manager:
-			guide_drawer.visible = ui_manager.guide_enabled
+			guide_drawer.visible = ui_manager.guide_enabled and (level_data.target_image != null)
 		else:
 			guide_drawer.hide()
 			
 	if guide_lines:
 		guide_lines.set_target(level_data.target_sequence)
 		if ui_manager:
-			guide_lines.visible = ui_manager.guide_enabled
+			# 画像がない場合は線でガイドを描画
+			guide_lines.visible = ui_manager.guide_enabled and (level_data.target_image == null)
 		else:
 			guide_lines.hide()
+			
+	if level_idx == 0:
+		get_tree().create_timer(1.0).timeout.connect(_show_hint)
 
 func _on_game_cleared() -> void:
 	if ui_manager:
@@ -177,8 +210,35 @@ func _handle_game_clear() -> void:
 		if ui_manager.has_method("set_result_stars"):
 			ui_manager.set_result_stars(_current_stars)
 		ui_manager.play_clear_animation()
+		
+	if GameSave:
+		GameSave.add_stars(_current_stars)
+		
+	if motif_drawer:
+		motif_drawer.setup(string_drawer.finger_positions, string_manager.target_string)
 	
 	await get_tree().create_timer(2.0).timeout
 	current_state = GameState.RESULT
 	if ui_manager:
 		ui_manager.show_result_panel()
+
+func _show_hint() -> void:
+	if current_state != GameState.PLAYING: return
+	var next_state = string_manager.get_next_hint(string_manager.current_string, string_manager.target_string)
+	if next_state.is_empty(): return
+	
+	var added_finger = -1
+	for f in next_state:
+		if not string_manager.current_string.has(f):
+			added_finger = f
+			break
+			
+	if added_finger == -1: return
+	
+	var arr = string_manager.current_string
+	var from_pos = Vector2(640, 360)
+	if arr.size() > 1:
+		from_pos = (string_drawer.finger_positions[arr[0]] + string_drawer.finger_positions[arr[1]]) / 2.0
+		
+	if string_drawer.finger_positions.has(added_finger):
+		tutorial_manager.show_hint(from_pos, string_drawer.finger_positions[added_finger])

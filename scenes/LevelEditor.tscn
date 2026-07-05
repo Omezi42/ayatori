@@ -1,6 +1,6 @@
 [gd_scene load_steps=8 format=3]
 
-[ext_resource type="Script" path="res://scripts/MainController.gd" id="1_mc"]
+[ext_resource type="Script" path="res://scripts/LevelEditor.gd" id="1_le"]
 [ext_resource type="Script" path="res://scripts/StringManager.gd" id="2_sm"]
 [ext_resource type="Script" path="res://scripts/StringDrawer.gd" id="3_sd"]
 [ext_resource type="Script" path="res://scripts/FingerNode.gd" id="4_fn"]
@@ -12,7 +12,7 @@
 radius = 40.0
 
 [node name="Main" type="Node2D" node_paths=PackedStringArray("string_manager", "string_drawer", "level_manager", "ui_manager")]
-script = ExtResource("1_mc")
+script = ExtResource("1_le")
 string_manager = NodePath("StringManager")
 string_drawer = NodePath("StringDrawer")
 level_manager = NodePath("LevelManager")
