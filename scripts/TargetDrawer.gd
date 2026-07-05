@@ -21,6 +21,10 @@ func set_target(sequence: Array[int]) -> void:
 	queue_redraw()
 
 func _draw() -> void:
+	# すべてのピンを薄く描画
+	for pos in finger_positions:
+		draw_circle(pos, 15.0, Color(0.8, 0.8, 0.8, 0.5))
+	
 	if target_sequence.size() < 2:
 		return
 	
@@ -28,6 +32,8 @@ func _draw() -> void:
 	for idx in target_sequence:
 		if idx >= 0 and idx < finger_positions.size():
 			points.append(finger_positions[idx])
+			# お題に使われるピンを強調して描画
+			draw_circle(finger_positions[idx], 20.0, Color(1.0, 0.6, 0.7, 0.8))
 			
 	if points.size() > 0:
 		points.append(points[0]) # 閉じたループにする

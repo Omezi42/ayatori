@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="98" height="106" viewBox="15 11 98 106" fill="none">
+  <!-- 左ノードから右上ノードへの接続線（塗りつぶし帯） -->
+  <path d="M 32 55 L 88 19 L 96 33 L 40 69 Z" fill="white"/>
+  <!-- 左ノードから右下ノードへの接続線（塗りつぶし帯） -->
+  <path d="M 32 73 L 40 59 L 96 95 L 88 109 Z" fill="white"/>
+  <!-- 左ノード（中央左） -->
+  <circle cx="32" cy="64" r="16" fill="white"/>
+  <!-- 右上ノード -->
+  <circle cx="96" cy="28" r="16" fill="white"/>
+  <!-- 右下ノード -->
+  <circle cx="96" cy="100" r="16" fill="white"/>
+</svg>

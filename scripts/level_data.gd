@@ -5,3 +5,4 @@ extends Resource
 @export var target_image: Texture2D
 @export var target_sequence: Array[int] = []
 @export var initial_sequence: Array[int] = [0, 4, 5, 9]
+@export var optimal_moves: int = -1 # -1の場合は自動計算

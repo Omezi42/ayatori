@@ -3,11 +3,16 @@ class_name StringManager extends Node
 var current_string: Array[int] = []
 var target_string: Array[int] = []
 var history: Array[Array] = []
+var optimal_moves_cache: int = -1
 
 signal string_changed
 
 func _ready() -> void:
 	pass
+
+# 現在の手数を取得する（historyのサイズ＝操作回数）
+func get_move_count() -> int:
+	return history.size()
 
 # 履歴を保存する
 func save_history() -> void:
@@ -44,12 +49,15 @@ func reset_to_initial(initial_state: Array[int]) -> void:
 
 # 現在の配列が正解配列と一致するか判定する（シフト、逆順対応）
 func check_clear() -> bool:
-	if target_string.is_empty() or current_string.is_empty():
+	return is_state_matching_target(current_string, target_string)
+
+func is_state_matching_target(state: Array[int], target: Array[int]) -> bool:
+	if target.is_empty() or state.is_empty():
 		return false
 	
 	# 1. 配列の正規化（最初と最後が重複している場合は最後の要素を削除）
-	var current_norm = _normalize_sequence(current_string)
-	var target_norm = _normalize_sequence(target_string)
+	var current_norm = _normalize_sequence(state)
+	var target_norm = _normalize_sequence(target)
 	
 	# 正規化後の要素数が異なる場合は不一致
 	if current_norm.size() != target_norm.size():
@@ -97,3 +105,72 @@ func _contains_sub_array(dummy_array: Array[int], target_sub_array: Array[int]) 
 		if match_found:
 			return true
 	return false
+
+# BFSで最短手数を計算する
+func calculate_optimal_moves(initial_state: Array[int], target_state: Array[int]) -> int:
+	if is_state_matching_target(initial_state, target_state):
+		return 0
+		
+	var queue: Array = []
+	var visited: Dictionary = {}
+	
+	var start_norm = _normalize_sequence(initial_state)
+	var start_hash = _hash_state(start_norm)
+	
+	queue.append({"state": start_norm, "depth": 0})
+	visited[start_hash] = true
+	
+	# 最大深さ（あまり深く探索しすぎないためのフェイルセーフ）
+	var MAX_DEPTH = 10
+	
+	while not queue.is_empty():
+		var current = queue.pop_front()
+		var state: Array[int] = current["state"]
+		var depth: int = current["depth"]
+		
+		if depth >= MAX_DEPTH:
+			continue
+			
+		var next_depth = depth + 1
+		var next_states = _generate_next_states(state)
+		
+		for next_state in next_states:
+			var norm = _normalize_sequence(next_state)
+			if is_state_matching_target(norm, target_state):
+				return next_depth
+				
+			var h = _hash_state(norm)
+			if not visited.has(h):
+				visited[h] = true
+				queue.append({"state": norm, "depth": next_depth})
+				
+	return MAX_DEPTH # 見つからなかった場合のフォールバック
+
+func _hash_state(state: Array[int]) -> String:
+	# 順序に依存しない表現か、単純な文字列化
+	# ※シフトや逆順で同じとみなせる場合は同じハッシュにするのが理想だが、
+	# 簡単のため文字列化（BFSの枝刈りは少し弱くなる）
+	return str(state)
+
+func _generate_next_states(state: Array[int]) -> Array[Array]:
+	var results: Array[Array] = []
+	var available_fingers = []
+	for i in range(10):
+		if not state.has(i):
+			available_fingers.append(i)
+			
+	# hook_finger: 任意の2つの要素の間に、まだ使っていない指を挿入
+	for finger in available_fingers:
+		for i in range(state.size()):
+			var next_state = state.duplicate()
+			next_state.insert(i + 1, finger)
+			results.append(next_state)
+			
+	# unhook_finger: 要素数が3より大きい場合、任意の要素を削除
+	if state.size() > 3:
+		for i in range(state.size()):
+			var next_state = state.duplicate()
+			next_state.remove_at(i)
+			results.append(next_state)
+			
+	return results

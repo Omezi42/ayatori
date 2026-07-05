@@ -124,13 +124,14 @@ finger_id = 9
 [node name="CollisionShape2D" type="CollisionShape2D" parent="Fingers/Finger9"]
 shape = SubResource("CircleShape2D_f")
 
-[node name="UIManager" type="CanvasLayer" parent="." node_paths=PackedStringArray("string_manager", "undo_button", "reset_button", "share_button", "level_label", "message_label")]
+[node name="UIManager" type="CanvasLayer" parent="." node_paths=PackedStringArray("string_manager", "undo_button", "reset_button", "share_button", "level_label", "moves_label", "message_label")]
 script = ExtResource("6_ui")
 string_manager = NodePath("../StringManager")
 undo_button = NodePath("Control/HBoxContainer/UndoButton")
 reset_button = NodePath("Control/HBoxContainer/ResetButton")
 share_button = NodePath("Control/HBoxContainer/ShareButton")
 level_label = NodePath("Control/LevelLabel")
+moves_label = NodePath("Control/MovesLabel")
 message_label = NodePath("Control/MessageLabel")
 
 [node name="Control" type="Control" parent="UIManager"]
@@ -141,6 +142,16 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
+
+[node name="MovesLabel" type="Label" parent="UIManager/Control"]
+layout_mode = 0
+offset_left = 30.0
+offset_top = 90.0
+offset_right = 200.0
+offset_bottom = 150.0
+theme_override_font_sizes/font_size = 24
+text = "手数: 0 / 最短: 0
+★★★"
 
 [node name="LevelLabel" type="Label" parent="UIManager/Control"]
 layout_mode = 0
