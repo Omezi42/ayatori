@@ -1,54 +1,75 @@
 extends Control
 
 func _ready() -> void:
-	# Setup styling for start button
-	var btn = $StartButton
-	var btn_style = StyleBoxFlat.new()
-	btn_style.bg_color = Color(0.92, 0.62, 0.75, 1.0)
-	btn_style.corner_radius_top_left = 32
-	btn_style.corner_radius_top_right = 32
-	btn_style.corner_radius_bottom_left = 32
-	btn_style.corner_radius_bottom_right = 32
-	btn_style.shadow_color = Color(0.8, 0.35, 0.5, 0.5)
-	btn_style.shadow_size = 8
-	btn_style.content_margin_top = 20
-	btn_style.content_margin_bottom = 20
-	btn_style.content_margin_left = 60
-	btn_style.content_margin_right = 60
-	
-	var btn_hover = btn_style.duplicate()
-	btn_hover.bg_color = Color(0.96, 0.72, 0.82, 1.0)
-	
-	for b in [btn, $CreateButton, $HBoxContainer/LoadButton]:
-		b.add_theme_stylebox_override("normal", btn_style)
-		b.add_theme_stylebox_override("hover", btn_hover)
-		b.add_theme_stylebox_override("pressed", btn_style)
-		b.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
-		b.add_theme_color_override("font_color", Color.WHITE)
-		b.add_theme_constant_override("outline_size", 4)
-		b.add_theme_color_override("font_outline_color", Color(0.7, 0.4, 0.5, 0.8))
-		
-		b.pivot_offset = b.size / 2.0
-		b.mouse_entered.connect(func(): _animate_button(b, Vector2(1.05, 1.05)))
-		b.mouse_exited.connect(func(): _animate_button(b, Vector2(1.0, 1.0)))
+	# 1. 全体テーマ（フォントアウトラインの統一）
+	var theme = Theme.new()
+	theme.set_color("font_outline_color", "Label", Color("#5C4B51"))
+	theme.set_color("font_outline_color", "Button", Color("#5C4B51"))
+	theme.set_constant("outline_size", "Label", 12)
+	theme.set_constant("outline_size", "Button", 8)
+	self.theme = theme
 
-	btn.pressed.connect(_on_start_pressed)
-	$CreateButton.pressed.connect(_on_create_pressed)
-	$HBoxContainer/LoadButton.pressed.connect(_on_load_pressed)
+	# 2. プライマリボタン（スタート）のスタイル
+	var primary_normal = _create_button_style(Color("#F2849E"), 6)
+	var primary_pressed = _create_button_style(Color("#F2849E"), 0)
+	primary_pressed.content_margin_top += 6    # 押し込み表現
+	primary_pressed.content_margin_bottom -= 6
+	
+	_apply_button_styles($ButtonContainer/StartButton, primary_normal, primary_pressed)
+	
+	# 3. セカンダリボタン（作成・読込）のスタイル
+	var secondary_normal = _create_button_style(Color("#F5B7C6"), 6) # 少しトーンを落とす
+	var secondary_pressed = _create_button_style(Color("#F5B7C6"), 0)
+	secondary_pressed.content_margin_top += 6
+	secondary_pressed.content_margin_bottom -= 6
+	
+	_apply_button_styles($ButtonContainer/CreateButton, secondary_normal, secondary_pressed)
+	_apply_button_styles($ButtonContainer/LoadContainer/LoadButton, secondary_normal, secondary_pressed)
+	
+	# シグナルの接続
+	$ButtonContainer/StartButton.pressed.connect(_on_start_pressed)
+	$ButtonContainer/CreateButton.pressed.connect(_on_create_pressed)
+	$ButtonContainer/LoadContainer/LoadButton.pressed.connect(_on_load_pressed)
 	
 	FirebaseManager.load_completed.connect(_on_level_loaded)
 	FirebaseManager.load_failed.connect(_on_load_failed)
 	
-	# Title animation
-	var title = $TitleLabel
-	title.pivot_offset = title.size / 2.0
-	var tween = create_tween().set_loops()
-	tween.tween_property(title, "scale", Vector2(1.05, 1.05), 1.0).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
-	tween.tween_property(title, "scale", Vector2(1.0, 1.0), 1.0).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	# ロゴのアニメーション（ふわふわ浮遊させる）
+	var logo = $LogoContainer
+	logo.pivot_offset = logo.size / 2.0
+	var tween = create_tween().set_loops().set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	tween.tween_property(logo, "position:y", logo.position.y - 10, 1.5)
+	tween.tween_property(logo, "position:y", logo.position.y + 10, 1.5)
 
-func _animate_button(btn: Button, target_scale: Vector2) -> void:
-	var tween = create_tween().set_trans(Tween.TRANS_SPRING).set_ease(Tween.EASE_OUT)
-	tween.tween_property(btn, "scale", target_scale, 0.3)
+# ボタンのスタイルボックスを生成するヘルパー関数
+func _create_button_style(bg_col: Color, shadow_y: float) -> StyleBoxFlat:
+	var style = StyleBoxFlat.new()
+	style.bg_color = bg_col
+	# カプセル型にするための大きなR
+	style.corner_radius_top_left = 100
+	style.corner_radius_top_right = 100
+	style.corner_radius_bottom_left = 100
+	style.corner_radius_bottom_right = 100
+	# 影の設定
+	if shadow_y > 0:
+		style.shadow_color = Color("#D95B7A")
+		style.shadow_size = 0 # ぼかしをなくしてシャープな影に
+		style.shadow_offset = Vector2(0, shadow_y)
+	
+	# 基本の余白
+	style.content_margin_top = 20
+	style.content_margin_bottom = 20
+	style.content_margin_left = 40
+	style.content_margin_right = 40
+	return style
+
+# ボタンにスタイルを適用するヘルパー関数
+func _apply_button_styles(btn: Button, normal_style: StyleBoxFlat, pressed_style: StyleBoxFlat) -> void:
+	btn.add_theme_stylebox_override("normal", normal_style)
+	btn.add_theme_stylebox_override("hover", normal_style) # ホバー時はnormalと同じでOK
+	btn.add_theme_stylebox_override("pressed", pressed_style)
+	btn.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
+	btn.add_theme_color_override("font_color", Color.WHITE)
 
 func _on_start_pressed() -> void:
 	if FirebaseManager.has_meta("ugc_target"):
@@ -59,28 +80,21 @@ func _on_create_pressed() -> void:
 	get_tree().change_scene_to_file("res://scenes/LevelEditor.tscn")
 
 func _on_load_pressed() -> void:
-	var code = $HBoxContainer/CodeInput.text.strip_edges()
+	var code = $ButtonContainer/LoadContainer/CodeInput.text.strip_edges()
 	if code.length() > 0:
-		$HBoxContainer/LoadButton.text = "読込中..."
-		$HBoxContainer/LoadButton.disabled = true
+		$ButtonContainer/LoadContainer/LoadButton.text = "読込中..."
+		$ButtonContainer/LoadContainer/LoadButton.disabled = true
 		FirebaseManager.load_level(code)
 
 func _on_level_loaded(target_sequence: Array) -> void:
-	$HBoxContainer/LoadButton.text = "コードで遊ぶ"
-	$HBoxContainer/LoadButton.disabled = false
-	
-	# UGCとして配列を渡し、Mainシーンへ遷移する
-	# ※ MainController や LevelManager にグローバルでデータを渡す必要があるため
-	# AutoLoadに設定したLevelManagerでフラグを立てるか、GameStateに持たせる。
-	# 今回はAutoLoadがないので、とりあえずLevelManagerの処理をMainで書き換えるために
-	# グローバルに渡したいが、手っ取り早くLevelManagerをAutoLoadにするか、専用AutoLoadを作るか。
-	# FirebaseManagerを利用する
+	$ButtonContainer/LoadContainer/LoadButton.text = "コードで遊ぶ"
+	$ButtonContainer/LoadContainer/LoadButton.disabled = false
 	FirebaseManager.set_meta("ugc_target", target_sequence)
 	get_tree().change_scene_to_file("res://scenes/Main.tscn")
 
 func _on_load_failed(err_msg: String) -> void:
-	$HBoxContainer/LoadButton.text = "失敗"
-	$HBoxContainer/LoadButton.disabled = false
+	$ButtonContainer/LoadContainer/LoadButton.text = "失敗"
+	$ButtonContainer/LoadContainer/LoadButton.disabled = false
 	print("Load Error: ", err_msg)
 	await get_tree().create_timer(1.5).timeout
-	$HBoxContainer/LoadButton.text = "コードで遊ぶ"
+	$ButtonContainer/LoadContainer/LoadButton.text = "コードで遊ぶ"

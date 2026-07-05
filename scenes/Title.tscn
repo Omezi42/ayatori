@@ -1,6 +1,15 @@
-[gd_scene load_steps=2 format=3]
+[gd_scene load_steps=4 format=3]
 
 [ext_resource type="Script" path="res://scripts/Title.gd" id="1_tl"]
+
+[sub_resource type="Gradient" id="Gradient_bg"]
+colors = PackedColorArray(1, 0.9725, 0.9059, 1, 0.9216, 0.8784, 0.7922, 1)
+
+[sub_resource type="GradientTexture2D" id="GradientTexture2D_bg"]
+gradient = SubResource("Gradient_bg")
+fill = 1
+fill_from = Vector2(0.5, 0.5)
+fill_to = Vector2(0.8, 0.8)
 
 [node name="Title" type="Control"]
 layout_mode = 3
@@ -11,90 +20,82 @@ grow_horizontal = 2
 grow_vertical = 2
 script = ExtResource("1_tl")
 
-[node name="Background" type="ColorRect" parent="."]
+[node name="Background" type="TextureRect" parent="."]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
-color = Color(1, 0.9725, 0.9059, 1)
+texture = SubResource("GradientTexture2D_bg")
 
-[node name="TitleLabel" type="Label" parent="."]
+[node name="LogoContainer" type="VBoxContainer" parent="."]
 layout_mode = 1
-anchors_preset = 8
-anchor_left = 0.5
-anchor_top = 0.5
-anchor_right = 0.5
-anchor_bottom = 0.5
-offset_left = -400.0
-offset_top = -150.0
-offset_right = 400.0
-offset_bottom = -50.0
+anchors_preset = -1
+anchor_right = 1.0
+anchor_bottom = 0.35
 grow_horizontal = 2
-grow_vertical = 2
+theme_override_constants/separation = 0
+alignment = 1
+
+[node name="MainTitle" type="Label" parent="LogoContainer"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.96, 0.45, 0.65, 1)
+theme_override_constants/outline_size = 12
+theme_override_font_sizes/font_size = 80
+text = "あやとりパズル"
+horizontal_alignment = 1
+rotation = -0.05
+pivot_offset = Vector2(240, 50)
+
+[node name="SubTitle" type="Label" parent="LogoContainer"]
+layout_mode = 2
 theme_override_colors/font_color = Color(0.96, 0.45, 0.65, 1)
 theme_override_constants/outline_size = 8
-theme_override_font_sizes/font_size = 72
-text = "あやとりパズル
--ゆびさきキャンバス-"
+theme_override_font_sizes/font_size = 36
+text = "-ゆびさきキャンバス-"
 horizontal_alignment = 1
 
-[node name="StartButton" type="Button" parent="."]
+[node name="ButtonContainer" type="VBoxContainer" parent="."]
 layout_mode = 1
-anchors_preset = 8
-anchor_left = 0.5
-anchor_top = 0.5
-anchor_right = 0.5
-anchor_bottom = 0.5
-offset_left = -150.0
-offset_top = 80.0
-offset_right = 150.0
-offset_bottom = 160.0
+anchors_preset = -1
+anchor_top = 0.35
+anchor_right = 1.0
+anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
-theme_override_font_sizes/font_size = 40
+theme_override_constants/separation = 24
+alignment = 1
+
+[node name="StartButton" type="Button" parent="ButtonContainer"]
+custom_minimum_size = Vector2(360, 100)
+layout_mode = 2
+size_flags_horizontal = 4
+theme_override_font_sizes/font_size = 48
 text = "スタート"
 
-[node name="CreateButton" type="Button" parent="."]
-layout_mode = 1
-anchors_preset = 8
-anchor_left = 0.5
-anchor_top = 0.5
-anchor_right = 0.5
-anchor_bottom = 0.5
-offset_left = -150.0
-offset_top = 180.0
-offset_right = 150.0
-offset_bottom = 240.0
-grow_horizontal = 2
-grow_vertical = 2
-theme_override_font_sizes/font_size = 28
+[node name="CreateButton" type="Button" parent="ButtonContainer"]
+custom_minimum_size = Vector2(360, 80)
+layout_mode = 2
+size_flags_horizontal = 4
+theme_override_font_sizes/font_size = 32
 text = "お題をつくる"
 
-[node name="HBoxContainer" type="HBoxContainer" parent="."]
-layout_mode = 1
-anchors_preset = 8
-anchor_left = 0.5
-anchor_top = 0.5
-anchor_right = 0.5
-anchor_bottom = 0.5
-offset_left = -200.0
-offset_top = 260.0
-offset_right = 200.0
-offset_bottom = 320.0
-grow_horizontal = 2
-grow_vertical = 2
+[node name="LoadContainer" type="HBoxContainer" parent="ButtonContainer"]
+custom_minimum_size = Vector2(360, 80)
+layout_mode = 2
+size_flags_horizontal = 4
 theme_override_constants/separation = 10
 
-[node name="CodeInput" type="LineEdit" parent="HBoxContainer"]
+[node name="CodeInput" type="LineEdit" parent="ButtonContainer/LoadContainer"]
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_font_sizes/font_size = 24
 placeholder_text = "共有コードを入力"
 alignment = 1
 
-[node name="LoadButton" type="Button" parent="HBoxContainer"]
+[node name="LoadButton" type="Button" parent="ButtonContainer/LoadContainer"]
+custom_minimum_size = Vector2(160, 0)
 layout_mode = 2
 theme_override_font_sizes/font_size = 24
 text = "コードで遊ぶ"
