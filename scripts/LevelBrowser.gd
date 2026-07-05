@@ -14,6 +14,10 @@ func _ready() -> void:
 	$VBoxContainer/HeaderHBox/CreateButton.pressed.connect(_on_create_pressed)
 	$VBoxContainer/SearchHBox/SearchButton.pressed.connect(_on_search_pressed)
 	
+	if GameSave and GameSave.has_method("add_settings_to"):
+		GameSave.add_settings_to(self)
+
+	
 	FirebaseManager.levels_fetched.connect(_on_levels_fetched)
 	FirebaseManager.fetch_failed.connect(_on_fetch_failed)
 	

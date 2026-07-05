@@ -50,7 +50,6 @@ func _draw() -> void:
 	var main_color = Color("ffb6c1") # 可愛いパステルピンク
 	var shadow_color = Color(0, 0, 0, 0.1)
 	var shine_color = Color(1, 1, 1, 0.6)
-	var nail_color = Color("ffcce0") # さらに薄いピンク
 	
 	# ドロップシャドウ
 	draw_circle(Vector2(0, 8), radius, shadow_color)
@@ -59,9 +58,5 @@ func _draw() -> void:
 	draw_circle(Vector2.ZERO, radius, main_color)
 	
 	# ぷっくりしたハイライト（ツヤ）
-	draw_circle(Vector2(-12, -12), radius * 0.25, shine_color)
+	draw_circle(Vector2(-12, -12), radius * 0.3, shine_color)
 	draw_circle(Vector2(-20, -4), radius * 0.1, shine_color)
-	
-	# 爪のような表現（下部に配置して指先がこっちを向いている感じに）
-	draw_circle(Vector2(0, 15), radius * 0.4, nail_color)
-

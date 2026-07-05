@@ -11,29 +11,7 @@ func _draw() -> void:
 		_draw_layout_pyramid()
 
 func _draw_layout_hands() -> void:
-	var skin_color = Color("ffeedd")
-	var shadow_color = Color(0, 0, 0, 0.05)
-	
-	var left_palm = Vector2(450, 360)
-	var right_palm = Vector2(830, 360)
-	var palm_radius = 160.0
-	
-	draw_circle(left_palm + Vector2(0, 10), palm_radius, shadow_color)
-	draw_circle(left_palm, palm_radius, skin_color)
-	draw_circle(right_palm + Vector2(0, 10), palm_radius, shadow_color)
-	draw_circle(right_palm, palm_radius, skin_color)
-	
-	var positions = PinLayout.get_positions(0)
-	var r_fingers = []
-	for i in range(5):
-		r_fingers.append(positions[i])
-	var l_fingers = []
-	for i in range(5, 10):
-		l_fingers.append(positions[i])
-	l_fingers.reverse()
-	
-	_draw_hand_fingers(left_palm, l_fingers, skin_color, shadow_color)
-	_draw_hand_fingers(right_palm, r_fingers, skin_color, shadow_color)
+	pass
 
 func _draw_layout_board() -> void:
 	var board_color = Color("e6d8ce")
@@ -71,18 +49,8 @@ func _draw_layout_pyramid() -> void:
 func _draw_hand_fingers(palm: Vector2, fingers: Array, color: Color, shadow: Color) -> void:
 	var thickness = 80.0
 	for finger_pos in fingers:
-		var dir = (finger_pos - palm).normalized()
-		var perp = Vector2(-dir.y, dir.x) * (thickness / 2.0)
-		
-		var p1 = palm + perp
-		var p2 = palm - perp
-		var p3 = finger_pos - perp
-		var p4 = finger_pos + perp
-		
 		# ドロップシャドウ
-		draw_polygon(PackedVector2Array([p1 + Vector2(0, 10), p2 + Vector2(0, 10), p3 + Vector2(0, 10), p4 + Vector2(0, 10)]), PackedColorArray([shadow, shadow, shadow, shadow]))
 		draw_circle(finger_pos + Vector2(0, 10), thickness / 2.0, shadow)
 		
 		# メインカラー
-		draw_polygon(PackedVector2Array([p1, p2, p3, p4]), PackedColorArray([color, color, color, color]))
 		draw_circle(finger_pos, thickness / 2.0, color)

@@ -13,6 +13,7 @@ signal fetch_failed(error)
 var http_request_save: HTTPRequest
 var http_request_load: HTTPRequest
 var http_request_fetch: HTTPRequest
+var current_search_query: String = ""
 
 func _ready():
 	http_request_save = HTTPRequest.new()
@@ -112,6 +113,7 @@ func _on_load_request_completed(result: int, response_code: int, headers: Packed
 		emit_signal("load_failed", "サーバーエラー: " + str(response_code))
 
 func fetch_levels(sort_type: String = "newest", search_query: String = ""):
+	current_search_query = search_query
 	var url = "https://firestore.googleapis.com/v1/projects/" + PROJECT_ID + "/databases/(default)/documents:runQuery"
 	var order_by_field = "created_at"
 	if sort_type == "popular":
@@ -150,8 +152,8 @@ func _on_fetch_request_completed(result: int, response_code: int, headers: Packe
 					var play_count = int(fields.get("play_count", {}).get("integerValue", "0"))
 					
 					# ローカルでの検索クエリ絞り込み
-					if search_query != "":
-						if search_query.to_upper() not in code and search_query not in title:
+					if current_search_query != "":
+						if current_search_query.to_upper() not in code and current_search_query not in title:
 							continue
 							
 					levels.append({

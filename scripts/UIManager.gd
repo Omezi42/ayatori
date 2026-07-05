@@ -52,9 +52,23 @@ func _ready() -> void:
 	_setup_floating_menus()
 	
 	if undo_button:
+		undo_button.text = "一つ戻る"
+		var undo_tex = load("res://assets/ic_system_rotate-counterclockwise_01_trimmed.svg")
+		if undo_tex:
+			undo_button.icon = undo_tex
+			undo_button.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
+			undo_button.vertical_icon_alignment = VERTICAL_ALIGNMENT_TOP
+			undo_button.add_theme_constant_override("icon_max_width", 32)
 		_setup_button_animations(undo_button)
 		undo_button.pressed.connect(_on_undo_pressed)
 	if reset_button:
+		reset_button.text = "リセット"
+		var reset_tex = load("res://assets/ic_system_refresh_01_trimmed.svg")
+		if reset_tex:
+			reset_button.icon = reset_tex
+			reset_button.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
+			reset_button.vertical_icon_alignment = VERTICAL_ALIGNMENT_TOP
+			reset_button.add_theme_constant_override("icon_max_width", 32)
 		_setup_button_animations(reset_button)
 		reset_button.pressed.connect(_on_reset_pressed)
 	if share_button:
@@ -68,7 +82,13 @@ func _ready() -> void:
 		message_label.scale = Vector2(0.5, 0.5)
 	
 	hint_button = Button.new()
-	hint_button.text = "💡\nHint"
+	hint_button.text = "ヒント"
+	var hint_tex = load("res://assets/ic_social_lightbulb_01_trimmed.svg")
+	if hint_tex:
+		hint_button.icon = hint_tex
+		hint_button.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		hint_button.vertical_icon_alignment = VERTICAL_ALIGNMENT_TOP
+		hint_button.add_theme_constant_override("icon_max_width", 32)
 	hint_button.add_theme_font_size_override("font_size", 24)
 	var footer = get_node_or_null("Control/FooterHBox")
 	if footer:

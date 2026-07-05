@@ -9,6 +9,10 @@ func _ready() -> void:
 	theme.set_constant("outline_size", "Button", 8)
 	self.theme = theme
 
+	if GameSave and GameSave.has_method("add_settings_to"):
+		GameSave.add_settings_to(self)
+
+
 	# 2. プライマリボタン（スタート）のスタイル
 	var primary_normal = _create_button_style(Color("#F2849E"), 6)
 	var primary_pressed = _create_button_style(Color("#F2849E"), 0)

@@ -3,7 +3,6 @@ class_name TargetDrawer extends Control
 var target_sequence: Array[int] = []
 
 # 固定された指の座標
-	pass
 
 var layout_id: int = 0
 

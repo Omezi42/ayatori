@@ -28,25 +28,73 @@ func _ready() -> void:
 			
 		ui_manager.share_button.pressed.connect(_on_save_pressed)
 		
+		# スタイルの準備
+		var btn_style = StyleBoxFlat.new()
+		btn_style.bg_color = Color(0.92, 0.62, 0.75, 0.95)
+		btn_style.corner_radius_top_left = 32
+		btn_style.corner_radius_top_right = 32
+		btn_style.corner_radius_bottom_left = 32
+		btn_style.corner_radius_bottom_right = 32
+		btn_style.shadow_color = Color(0.8, 0.35, 0.5, 0.3)
+		btn_style.shadow_size = 4
+		btn_style.content_margin_left = 20
+		btn_style.content_margin_right = 20
+		btn_style.content_margin_top = 10
+		btn_style.content_margin_bottom = 10
+		var btn_hover = btn_style.duplicate()
+		btn_hover.bg_color = Color(0.96, 0.72, 0.82, 1.0)
+		
+		var apply_style = func(btn):
+			btn.add_theme_stylebox_override("normal", btn_style)
+			btn.add_theme_stylebox_override("hover", btn_hover)
+			btn.add_theme_stylebox_override("pressed", btn_style)
+			btn.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
+			btn.add_theme_color_override("font_color", Color.WHITE)
+			btn.add_theme_constant_override("outline_size", 4)
+			btn.add_theme_color_override("font_outline_color", Color(0.7, 0.4, 0.5, 0.8))
+			btn.add_theme_color_override("font_hover_color", Color.WHITE)
+
 		# Titleに戻るボタン
 		var back_btn = Button.new()
 		back_btn.text = "タイトルへ"
 		back_btn.add_theme_font_size_override("font_size", 24)
+		apply_style.call(back_btn)
 		ui_manager.get_node("Control/HBoxContainer").add_child(back_btn)
 		back_btn.pressed.connect(func(): get_tree().change_scene_to_file("res://scenes/Title.tscn"))
 		
-		# タイトル入力フィールド
+		# Xに投稿ボタン (シェアする)
+		var free_share_btn = Button.new()
+		free_share_btn.text = "シェアする"
+		free_share_btn.add_theme_font_size_override("font_size", 24)
+		apply_style.call(free_share_btn)
+		ui_manager.get_node("Control/HBoxContainer").add_child(free_share_btn)
+		free_share_btn.pressed.connect(Callable(ui_manager, "_on_share_pressed"))
+		
+		# タイトル入力ダイアログ
+		var dialog = ConfirmationDialog.new()
+		dialog.name = "TitleDialog"
+		dialog.title = "タイトルを入力"
+		
+		var dialog_vbox = VBoxContainer.new()
+		var label = Label.new()
+		label.text = "お題のタイトルを入力してください："
+		dialog_vbox.add_child(label)
+		
 		var title_input = LineEdit.new()
 		title_input.name = "TitleInput"
 		title_input.placeholder_text = "お題のタイトルを入力"
-		title_input.add_theme_font_size_override("font_size", 24)
-		title_input.custom_minimum_size = Vector2(300, 50)
-		ui_manager.get_node("Control/HBoxContainer").add_child(title_input)
+		title_input.custom_minimum_size = Vector2(300, 40)
+		dialog_vbox.add_child(title_input)
+		
+		dialog.add_child(dialog_vbox)
+		dialog.confirmed.connect(_on_dialog_confirmed)
+		add_child(dialog)
 		
 		# レイアウト選択用OptionButton
 		var layout_option = OptionButton.new()
 		layout_option.name = "LayoutOption"
 		layout_option.add_theme_font_size_override("font_size", 24)
+		apply_style.call(layout_option)
 		layout_option.add_item("手 (ステージ1)", 0)
 		layout_option.add_item("ボード (ステージ2)", 1)
 		layout_option.add_item("ピラミッド (ステージ3)", 2)
@@ -91,7 +139,16 @@ func _on_segment_dropped_on_finger(segment_index: int, finger_id: int) -> void:
 	string_manager.hook_finger(segment_index, finger_id)
 
 func _on_save_pressed() -> void:
-	var title_input = ui_manager.get_node_or_null("Control/HBoxContainer/TitleInput") as LineEdit
+	var dialog = get_node_or_null("TitleDialog") as ConfirmationDialog
+	if dialog:
+		var title_input = dialog.get_node("VBoxContainer/TitleInput") as LineEdit
+		if title_input:
+			title_input.text = ""
+		dialog.popup_centered(Vector2(400, 150))
+
+func _on_dialog_confirmed() -> void:
+	var dialog = get_node("TitleDialog")
+	var title_input = dialog.get_node("VBoxContainer/TitleInput") as LineEdit
 	var layout_option = ui_manager.get_node_or_null("Control/HBoxContainer/LayoutOption") as OptionButton
 	var title = "無題"
 	if title_input and title_input.text.strip_edges() != "":
