@@ -1,0 +1,9 @@
+[gd_resource type="Resource" script_class="LevelData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/level_data.gd" id="1_ld"]
+
+[resource]
+script = ExtResource("1_ld")
+level_name = "ギザギザ"
+target_sequence = Array[int]([0, 2, 4, 6, 8, 9, 7, 5, 3, 1])
+initial_sequence = Array[int]([0, 4, 5, 9])

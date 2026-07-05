@@ -5,6 +5,7 @@ signal finger_clicked(id)
 signal finger_dropped_on(id)
 
 func _ready() -> void:
+	
 	# Area2Dの入力イベントを拾う
 	input_event.connect(_on_input_event)
 	mouse_entered.connect(_on_mouse_entered)
@@ -43,3 +44,13 @@ func is_hovered() -> bool:
 		if res.collider == self:
 			return true
 	return false
+
+func _draw() -> void:
+	var radius = 40.0
+	var main_color = Color("ffdab9") # 薄いオレンジ
+	var shadow_color = Color(0, 0, 0, 0.15)
+	
+	# ドロップシャドウ
+	draw_circle(Vector2(0, 4), radius, shadow_color)
+	# メインの円
+	draw_circle(Vector2.ZERO, radius, main_color)

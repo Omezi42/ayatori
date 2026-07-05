@@ -42,28 +42,48 @@ func reset_to_initial(initial_state: Array[int]) -> void:
 	current_string = initial_state.duplicate()
 	string_changed.emit()
 
-# 現在の配列が正解配列と一致するか判定する（シフト、リバース対応）
-func check_match() -> bool:
-	if target_string.is_empty() or current_string.size() != target_string.size():
+# 現在の配列が正解配列と一致するか判定する（シフト、逆順対応）
+func check_clear() -> bool:
+	if target_string.is_empty() or current_string.is_empty():
 		return false
 	
-	var length = target_string.size()
-	# ダミー配列を作成 (2周分)
-	var dummy: Array[int] = []
-	dummy.append_array(current_string)
-	dummy.append_array(current_string)
+	# 1. 配列の正規化（最初と最後が重複している場合は最後の要素を削除）
+	var current_norm = _normalize_sequence(current_string)
+	var target_norm = _normalize_sequence(target_string)
 	
-	# 順方向の一致確認
-	if _contains_sub_array(dummy, target_string):
+	# 正規化後の要素数が異なる場合は不一致
+	if current_norm.size() != target_norm.size():
+		return false
+		
+	# 要素数が0の場合はクリア扱いにはしない（あるいは仕様次第）
+	if current_norm.size() == 0:
+		return false
+		
+	var length = target_norm.size()
+	
+	# 2. シフト比較のためのダミー配列を作成 (2周分を連結)
+	var dummy: Array[int] = []
+	dummy.append_array(current_norm)
+	dummy.append_array(current_norm)
+	
+	# 3. 順方向（右回り等）のシフト一致確認
+	if _contains_sub_array(dummy, target_norm):
 		return true
 		
-	# 逆方向の一致確認
-	var reversed_target = target_string.duplicate()
+	# 4. 逆順（リバース・左回り等）のシフト一致確認
+	var reversed_target = target_norm.duplicate()
 	reversed_target.reverse()
 	if _contains_sub_array(dummy, reversed_target):
 		return true
 		
 	return false
+
+# 閉路を表す配列を正規化する（最初と最後が同じなら最後を取り除く）
+func _normalize_sequence(seq: Array[int]) -> Array[int]:
+	var res = seq.duplicate()
+	if res.size() > 1 and res[0] == res[res.size() - 1]:
+		res.pop_back()
+	return res
 
 # dummy_array の中に target_sub_array が連続して含まれるかチェックするヘルパー
 func _contains_sub_array(dummy_array: Array[int], target_sub_array: Array[int]) -> bool:
