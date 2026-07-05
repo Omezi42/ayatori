@@ -86,7 +86,7 @@ for conf in level_configs:
     v = len(t)
     stretch = calculate_stretch(t)
     
-    score = om * 10 + inter * 2 + v * 1 + stretch * 0.5
+    score = inter * 10 + v * 3 + stretch * 2 + om * 1
     conf["score"] = score
     conf["metrics"] = f"(om:{om}, i:{inter}, v:{v}, str:{stretch:.1f})"
 
