@@ -131,11 +131,11 @@ shape = SubResource("CircleShape2D_f")
 [node name="UIManager" type="CanvasLayer" parent="." node_paths=PackedStringArray("string_manager", "undo_button", "reset_button", "share_button", "level_label", "moves_label", "message_label")]
 script = ExtResource("6_ui")
 string_manager = NodePath("../StringManager")
-undo_button = NodePath("Control/HBoxContainer/UndoButton")
-reset_button = NodePath("Control/HBoxContainer/ResetButton")
-share_button = NodePath("Control/HBoxContainer/ShareButton")
-level_label = NodePath("Control/LevelLabel")
-moves_label = NodePath("Control/MovesLabel")
+undo_button = NodePath("Control/FooterHBox/UndoButton")
+reset_button = NodePath("Control/FooterHBox/ResetButton")
+share_button = NodePath("Control/FooterHBox/ShareButton")
+level_label = NodePath("Control/HeaderHBox/InfoPanel/InfoVBox/LevelLabel")
+moves_label = NodePath("Control/HeaderHBox/InfoPanel/InfoVBox/MovesLabel")
 message_label = NodePath("Control/MessageLabel")
 
 [node name="Control" type="Control" parent="UIManager"]
@@ -147,24 +147,99 @@ grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
 
-[node name="MovesLabel" type="Label" parent="UIManager/Control"]
-layout_mode = 0
-offset_left = 30.0
-offset_top = 90.0
-offset_right = 200.0
-offset_bottom = 150.0
-theme_override_font_sizes/font_size = 24
-text = "手数: 0 / 最短: 0
-★★★"
+[node name="HeaderHBox" type="HBoxContainer" parent="UIManager/Control"]
+layout_mode = 1
+anchors_preset = 10
+anchor_right = 1.0
+offset_left = 12.0
+offset_top = 8.0
+offset_right = -12.0
+offset_bottom = 72.0
+grow_horizontal = 2
+mouse_filter = 2
+theme_override_constants/separation = 12
+alignment = 0
 
-[node name="LevelLabel" type="Label" parent="UIManager/Control"]
-layout_mode = 0
-offset_left = 30.0
-offset_top = 30.0
-offset_right = 200.0
-offset_bottom = 80.0
-theme_override_font_sizes/font_size = 32
-text = "Level 1"
+[node name="InfoPanel" type="PanelContainer" parent="UIManager/Control/HeaderHBox"]
+layout_mode = 2
+size_flags_horizontal = 0
+size_flags_vertical = 0
+
+[node name="InfoVBox" type="VBoxContainer" parent="UIManager/Control/HeaderHBox/InfoPanel"]
+layout_mode = 2
+theme_override_constants/separation = 2
+
+[node name="LevelLabel" type="Label" parent="UIManager/Control/HeaderHBox/InfoPanel/InfoVBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 24
+text = "フリーモード"
+
+[node name="MovesLabel" type="Label" parent="UIManager/Control/HeaderHBox/InfoPanel/InfoVBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 18
+text = ""
+
+[node name="Spacer" type="Control" parent="UIManager/Control/HeaderHBox"]
+layout_mode = 2
+size_flags_horizontal = 3
+mouse_filter = 2
+
+[node name="GoalPanel" type="PanelContainer" parent="UIManager/Control/HeaderHBox"]
+layout_mode = 2
+size_flags_horizontal = 8
+size_flags_vertical = 0
+
+[node name="GoalVBox" type="VBoxContainer" parent="UIManager/Control/HeaderHBox/GoalPanel"]
+layout_mode = 2
+theme_override_constants/separation = 4
+alignment = 1
+
+[node name="GoalLabel" type="Label" parent="UIManager/Control/HeaderHBox/GoalPanel/GoalVBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.4, 0.4, 0.4, 1)
+theme_override_font_sizes/font_size = 20
+text = "もくひょう"
+horizontal_alignment = 1
+
+[node name="GoalTextureRect" type="TextureRect" parent="UIManager/Control/HeaderHBox/GoalPanel/GoalVBox"]
+custom_minimum_size = Vector2(160, 120)
+layout_mode = 2
+expand_mode = 1
+stretch_mode = 5
+
+[node name="FooterHBox" type="HBoxContainer" parent="UIManager/Control"]
+layout_mode = 1
+anchors_preset = 12
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 12.0
+offset_top = -88.0
+offset_right = -12.0
+offset_bottom = -12.0
+grow_horizontal = 2
+grow_vertical = 0
+theme_override_constants/separation = 12
+alignment = 1
+
+[node name="UndoButton" type="Button" parent="UIManager/Control/FooterHBox"]
+custom_minimum_size = Vector2(48, 48)
+layout_mode = 2
+theme_override_font_sizes/font_size = 20
+text = "もどす"
+
+[node name="ResetButton" type="Button" parent="UIManager/Control/FooterHBox"]
+custom_minimum_size = Vector2(48, 48)
+layout_mode = 2
+theme_override_font_sizes/font_size = 20
+text = "リセット"
+
+[node name="ShareButton" type="Button" parent="UIManager/Control/FooterHBox"]
+visible = false
+custom_minimum_size = Vector2(48, 48)
+layout_mode = 2
+theme_override_font_sizes/font_size = 20
+text = "シェア"
 
 [node name="MessageLabel" type="Label" parent="UIManager/Control"]
 modulate = Color(1, 1, 1, 0)
@@ -183,60 +258,4 @@ grow_vertical = 2
 theme_override_font_sizes/font_size = 64
 text = "Clear!"
 horizontal_alignment = 1
-
-[node name="HBoxContainer" type="HBoxContainer" parent="UIManager/Control"]
-layout_mode = 1
-anchors_preset = 2
-anchor_top = 1.0
-anchor_bottom = 1.0
-offset_left = 30.0
-offset_top = -100.0
-offset_right = 380.0
-offset_bottom = -30.0
-grow_vertical = 0
-theme_override_constants/separation = 20
-
-[node name="UndoButton" type="Button" parent="UIManager/Control/HBoxContainer"]
-layout_mode = 2
-theme_override_font_sizes/font_size = 28
-text = " Undo "
-
-[node name="ResetButton" type="Button" parent="UIManager/Control/HBoxContainer"]
-layout_mode = 2
-theme_override_font_sizes/font_size = 28
-text = " Reset "
-
-[node name="ShareButton" type="Button" parent="UIManager/Control/HBoxContainer"]
-layout_mode = 2
-theme_override_font_sizes/font_size = 28
-text = " Share "
-
-[node name="GoalPanel" type="PanelContainer" parent="UIManager/Control"]
-layout_mode = 1
-anchors_preset = 1
-anchor_left = 1.0
-anchor_right = 1.0
-offset_left = -280.0
-offset_top = 30.0
-offset_right = -30.0
-offset_bottom = 280.0
-grow_horizontal = 0
-
-[node name="VBoxContainer" type="VBoxContainer" parent="UIManager/Control/GoalPanel"]
-layout_mode = 2
-theme_override_constants/separation = 10
-alignment = 1
-
-[node name="GoalLabel" type="Label" parent="UIManager/Control/GoalPanel/VBoxContainer"]
-layout_mode = 2
-theme_override_colors/font_color = Color(0.4, 0.4, 0.4, 1)
-theme_override_font_sizes/font_size = 24
-text = "これをつくろう！"
-horizontal_alignment = 1
-
-[node name="GoalTextureRect" type="TextureRect" parent="UIManager/Control/GoalPanel/VBoxContainer"]
-custom_minimum_size = Vector2(200, 200)
-layout_mode = 2
-expand_mode = 1
-stretch_mode = 5
 

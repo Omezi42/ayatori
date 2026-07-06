@@ -17,6 +17,7 @@ config/icon="res://icon.svg"
 
 [autoload]
 
+ThemeConfig="*res://scripts/ThemeConfig.gd"
 FirebaseManager="*res://scripts/FirebaseManager.gd"
 GameSave="*res://scripts/GameSave.gd"
 

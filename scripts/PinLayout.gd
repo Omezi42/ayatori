@@ -3,7 +3,7 @@ class_name PinLayout
 static func get_positions(layout_id: int) -> Array[Vector2]:
 	match layout_id:
 		0:
-			# ステージ1: 手の形（既存）
+			# ステージ1: 円形（既存）
 			return [
 				Vector2(640, 110), # 0
 				Vector2(786, 158), # 1

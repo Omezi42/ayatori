@@ -8,12 +8,20 @@ var center_pos: Vector2 = Vector2.ZERO
 func _ready() -> void:
 	line = Line2D.new()
 	line.width = 80.0
-	line.default_color = Color(1.0, 0.9, 0.4, 0.5) # 光るような黄色/ゴールド
+	var col = ThemeConfig.STAR_GOLD
+	col.a = 0.5
+	line.default_color = col
 	line.joint_mode = Line2D.LINE_JOINT_ROUND
 	line.begin_cap_mode = Line2D.LINE_CAP_ROUND
 	line.end_cap_mode = Line2D.LINE_CAP_ROUND
 	line.closed = true
 	add_child(line)
+
+func apply_theme_colors() -> void:
+	if line:
+		var col = ThemeConfig.STAR_GOLD
+		col.a = 0.5
+		line.default_color = col
 	
 func setup(finger_positions: Dictionary, target_sequence: Array[int]):
 	base_points.clear()

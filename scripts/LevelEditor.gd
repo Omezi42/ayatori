@@ -5,70 +5,75 @@ class_name LevelEditor extends Node
 @export var level_manager: LevelManager
 @export var ui_manager: UIManager
 
+var title_input: LineEdit
+
 func _ready() -> void:
+	if GameSave:
+		GameSave.customization_changed.connect(_update_bg_color)
+	_update_bg_color()
+	
 	for node in get_tree().get_nodes_in_group("fingers"):
 		if node is FingerNode:
 			node.finger_clicked.connect(_on_finger_clicked)
-			string_drawer.register_finger(node.finger_id, node.global_position)
+			if string_drawer:
+				string_drawer.register_finger(node.finger_id, node.global_position)
 	
 	if string_drawer:
 		string_drawer.segment_dropped_on_finger.connect(_on_segment_dropped_on_finger)
 	
-	string_manager.reset_to_initial([0, 4, 5, 9])
-	string_drawer.update_line()
+	if string_manager:
+		string_manager.reset_to_initial([0, 4, 5, 9])
+	if string_drawer:
+		string_drawer.update_line()
 	
 	if ui_manager:
 		ui_manager.update_level_text(-1, "フリーモード")
-		ui_manager.share_button.text = " お題として投稿する "
-		ui_manager.share_button.show()
-		
-		# UIManager内で接続されているシグナルを解除して上書き
-		if ui_manager.share_button.is_connected("pressed", Callable(ui_manager, "_on_share_pressed")):
-			ui_manager.share_button.pressed.disconnect(Callable(ui_manager, "_on_share_pressed"))
+		if ui_manager.share_button:
+			ui_manager.share_button.text = " お題として投稿する "
+			ui_manager.share_button.show()
 			
-		ui_manager.share_button.pressed.connect(_on_save_pressed)
+			# UIManager内で接続されているシグナルを解除して上書き
+			if ui_manager.share_button.is_connected("pressed", Callable(ui_manager, "_on_share_pressed")):
+				ui_manager.share_button.pressed.disconnect(Callable(ui_manager, "_on_share_pressed"))
+				
+			ui_manager.share_button.pressed.connect(_on_save_pressed)
 		
-		# スタイルの準備
-		var btn_style = StyleBoxFlat.new()
-		btn_style.bg_color = Color(0.92, 0.62, 0.75, 0.95)
-		btn_style.corner_radius_top_left = 32
-		btn_style.corner_radius_top_right = 32
-		btn_style.corner_radius_bottom_left = 32
-		btn_style.corner_radius_bottom_right = 32
-		btn_style.shadow_color = Color(0.8, 0.35, 0.5, 0.3)
-		btn_style.shadow_size = 4
+		# スタイルの準備 (ThemeConfig統一)
+		var btn_style = ThemeConfig.create_button_style(ThemeConfig.PRIMARY, 4, ThemeConfig.RADIUS_XL)
 		btn_style.content_margin_left = 20
 		btn_style.content_margin_right = 20
 		btn_style.content_margin_top = 10
 		btn_style.content_margin_bottom = 10
-		var btn_hover = btn_style.duplicate()
-		btn_hover.bg_color = Color(0.96, 0.72, 0.82, 1.0)
+		var btn_pressed = ThemeConfig.create_pressed_style(ThemeConfig.PRIMARY, ThemeConfig.RADIUS_XL)
+		btn_pressed.content_margin_left = 20
+		btn_pressed.content_margin_right = 20
 		
-		var apply_style = func(btn):
-			btn.add_theme_stylebox_override("normal", btn_style)
-			btn.add_theme_stylebox_override("hover", btn_hover)
-			btn.add_theme_stylebox_override("pressed", btn_style)
-			btn.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
-			btn.add_theme_color_override("font_color", Color.WHITE)
-			btn.add_theme_constant_override("outline_size", 4)
-			btn.add_theme_color_override("font_outline_color", Color(0.7, 0.4, 0.5, 0.8))
-			btn.add_theme_color_override("font_hover_color", Color.WHITE)
+		var sec_style = ThemeConfig.create_button_style(ThemeConfig.PRIMARY_LIGHT, 4, ThemeConfig.RADIUS_XL)
+		sec_style.content_margin_left = 20
+		sec_style.content_margin_right = 20
+		sec_style.content_margin_top = 10
+		sec_style.content_margin_bottom = 10
+		var sec_pressed = ThemeConfig.create_pressed_style(ThemeConfig.PRIMARY_LIGHT, ThemeConfig.RADIUS_XL)
+		sec_pressed.content_margin_left = 20
+		sec_pressed.content_margin_right = 20
 
-		# Titleに戻るボタン
-		var back_btn = Button.new()
-		back_btn.text = "タイトルへ"
-		back_btn.add_theme_font_size_override("font_size", 24)
-		apply_style.call(back_btn)
-		ui_manager.get_node("Control/HBoxContainer").add_child(back_btn)
-		back_btn.pressed.connect(func(): get_tree().change_scene_to_file("res://scenes/Title.tscn"))
-		
-		# Xに投稿ボタン (シェアする)
-		var free_share_btn = Button.new()
-		free_share_btn.text = "シェアする"
-		free_share_btn.add_theme_font_size_override("font_size", 24)
-		apply_style.call(free_share_btn)
-		ui_manager.get_node("Control/HBoxContainer").add_child(free_share_btn)
-		free_share_btn.pressed.connect(Callable(ui_manager, "_on_share_pressed"))
+		var hbox = ui_manager.get_node_or_null("Control/FooterHBox")
+		if not hbox:
+			hbox = ui_manager.get_node_or_null("Control/HBoxContainer")
+			
+		if hbox:
+			# レイアウト選択用OptionButton
+			var layout_option = OptionButton.new()
+			layout_option.name = "LayoutOption"
+			layout_option.add_theme_font_size_override("font_size", ThemeConfig.FONT_BODY)
+			ThemeConfig.apply_option_button_theme(layout_option, btn_style, btn_pressed)
+			ThemeConfig.setup_button_animations(layout_option)
+			layout_option.add_item("円形 (ステージ1)", 0)
+			layout_option.add_item("ボード (ステージ2)", 1)
+			layout_option.add_item("ピラミッド (ステージ3)", 2)
+			hbox.add_child(layout_option)
+			hbox.move_child(layout_option, 2)
+			layout_option.item_selected.connect(_on_layout_selected)
 		
 		# タイトル入力ダイアログ
 		var dialog = ConfirmationDialog.new()
@@ -76,40 +81,50 @@ func _ready() -> void:
 		dialog.title = "タイトルを入力"
 		
 		var dialog_vbox = VBoxContainer.new()
+		dialog_vbox.name = "VBoxContainer"
 		var label = Label.new()
 		label.text = "お題のタイトルを入力してください："
 		dialog_vbox.add_child(label)
 		
-		var title_input = LineEdit.new()
+		title_input = LineEdit.new()
 		title_input.name = "TitleInput"
 		title_input.placeholder_text = "お題のタイトルを入力"
 		title_input.custom_minimum_size = Vector2(300, 40)
 		dialog_vbox.add_child(title_input)
 		
 		dialog.add_child(dialog_vbox)
+		ThemeConfig.apply_dialog_theme(dialog)
+		ThemeConfig.apply_line_edit_theme(title_input)
 		dialog.confirmed.connect(_on_dialog_confirmed)
 		add_child(dialog)
 		
-		# レイアウト選択用OptionButton
-		var layout_option = OptionButton.new()
-		layout_option.name = "LayoutOption"
-		layout_option.add_theme_font_size_override("font_size", 24)
-		apply_style.call(layout_option)
-		layout_option.add_item("手 (ステージ1)", 0)
-		layout_option.add_item("ボード (ステージ2)", 1)
-		layout_option.add_item("ピラミッド (ステージ3)", 2)
-		ui_manager.get_node("Control/HBoxContainer").add_child(layout_option)
-		layout_option.item_selected.connect(_on_layout_selected)
+		# 目標画像表示パネルと手数ラベルを非表示
+		if ui_manager.goal_panel: ui_manager.goal_panel.hide()
+		if ui_manager.moves_label: ui_manager.moves_label.hide()
 		
-		# 目標画像表示パネルを非表示
-		ui_manager.get_node("Control/GoalPanel").hide()
-		ui_manager.moves_label.hide()
+	var loading_overlay = CanvasLayer.new()
+	loading_overlay.layer = 100
+	var color_rect = ColorRect.new()
+	color_rect.color = Color(0, 0, 0, 0.5)
+	color_rect.set_anchors_preset(Control.PRESET_FULL_RECT)
+	loading_overlay.add_child(color_rect)
+	var loading_label = Label.new()
+	loading_label.text = "通信中..."
+	loading_label.add_theme_font_size_override("font_size", 32)
+	loading_label.set_anchors_preset(Control.PRESET_CENTER)
+	color_rect.add_child(loading_label)
+	loading_overlay.hide()
+	add_child(loading_overlay)
+	
+	FirebaseManager.network_request_started.connect(func(): loading_overlay.show())
+	FirebaseManager.network_request_completed.connect(func(_success, _err): loading_overlay.hide())
 		
 	FirebaseManager.save_completed.connect(_on_save_completed)
 	FirebaseManager.save_failed.connect(_on_save_failed)
 
 func _on_finger_clicked(finger_id: int) -> void:
-	if string_drawer.is_input_locked: return
+	if string_drawer and string_drawer.is_input_locked: return
+	if not string_manager: return
 	var arr = string_manager.current_string
 	var idx = arr.find(finger_id)
 	if idx != -1:
@@ -123,52 +138,120 @@ func _on_layout_selected(index: int) -> void:
 			bg_rect.queue_redraw()
 	
 	var positions = PinLayout.get_positions(index)
-	string_drawer.finger_positions.clear()
+	if string_drawer:
+		string_drawer.finger_positions.clear()
 	for node in get_tree().get_nodes_in_group("fingers"):
 		if node is FingerNode:
 			var id = node.finger_id
 			if id >= 0 and id < positions.size():
 				node.global_position = positions[id]
-				string_drawer.register_finger(id, positions[id])
+				if string_drawer:
+					string_drawer.register_finger(id, positions[id])
 	
-	string_manager.reset_to_initial([0, 4, 5, 9])
-	string_drawer.update_line()
+	if string_manager:
+		string_manager.reset_to_initial([0, 4, 5, 9])
+	if string_drawer:
+		string_drawer.update_line()
 
 func _on_segment_dropped_on_finger(segment_index: int, finger_id: int) -> void:
-	if string_drawer.is_input_locked: return
-	string_manager.hook_finger(segment_index, finger_id)
+	if string_drawer and string_drawer.is_input_locked: return
+	if string_manager:
+		string_manager.hook_finger(segment_index, finger_id)
 
 func _on_save_pressed() -> void:
 	var dialog = get_node_or_null("TitleDialog") as ConfirmationDialog
 	if dialog:
-		var title_input = dialog.get_node("VBoxContainer/TitleInput") as LineEdit
+		if not title_input:
+			title_input = dialog.find_child("TitleInput", true, false) as LineEdit
+		if not title_input:
+			title_input = dialog.get_node_or_null("VBoxContainer/TitleInput") as LineEdit
 		if title_input:
 			title_input.text = ""
 		dialog.popup_centered(Vector2(400, 150))
 
 func _on_dialog_confirmed() -> void:
-	var dialog = get_node("TitleDialog")
-	var title_input = dialog.get_node("VBoxContainer/TitleInput") as LineEdit
-	var layout_option = ui_manager.get_node_or_null("Control/HBoxContainer/LayoutOption") as OptionButton
-	var title = "無題"
+	var dialog = get_node_or_null("TitleDialog")
+	if not dialog: return
+	if not title_input:
+		title_input = dialog.find_child("TitleInput", true, false) as LineEdit
+	if not title_input:
+		title_input = dialog.get_node_or_null("VBoxContainer/TitleInput") as LineEdit
+	var layout_option = null
+	if ui_manager:
+		layout_option = ui_manager.get_node_or_null("Control/FooterHBox/LayoutOption") as OptionButton
+		if not layout_option:
+			layout_option = ui_manager.get_node_or_null("Control/HBoxContainer/LayoutOption") as OptionButton
+			
+	var title = ""
 	if title_input and title_input.text.strip_edges() != "":
 		title = title_input.text.strip_edges()
+		
+	if title == "":
+		if ui_manager: ui_manager.show_message("なまえを いれてね！")
+		return
+		
+	if string_manager and string_manager.current_string == [0, 4, 5, 9]:
+		if ui_manager: ui_manager.show_message("かたちを つくってから とうこうしてね！")
+		return
 		
 	var layout_id = 0
 	if layout_option:
 		layout_id = layout_option.selected
 		
-	ui_manager.share_button.text = " 発行中... "
-	ui_manager.share_button.disabled = true
-	FirebaseManager.save_level(title, string_manager.current_string, layout_id)
+	if ui_manager and ui_manager.share_button:
+		ui_manager.share_button.text = " 発行中... "
+		ui_manager.share_button.disabled = true
+	FirebaseManager.save_level(title, string_manager.current_string if string_manager else [], layout_id)
 
 func _on_save_completed(code: String) -> void:
-	ui_manager.share_button.text = " コード: " + code
-	ui_manager.share_button.disabled = false
+	if ui_manager and ui_manager.share_button:
+		ui_manager.share_button.text = " コード: " + code
+		ui_manager.share_button.disabled = false
 	DisplayServer.clipboard_set(code)
-	ui_manager.show_message("コピーしました!")
+	if OS.has_feature("web"):
+		var js_code = """
+			if (navigator.clipboard) {
+				navigator.clipboard.writeText('%s').then(function() {
+					console.log('Copied to clipboard');
+				});
+			}
+		""" % code
+		JavaScriptBridge.eval(js_code)
+	if ui_manager:
+		ui_manager.show_message("コピーしました!")
 
 func _on_save_failed(err: String) -> void:
-	ui_manager.share_button.text = " 失敗 "
-	ui_manager.share_button.disabled = false
+	if ui_manager and ui_manager.share_button:
+		ui_manager.share_button.text = " 失敗 "
+		ui_manager.share_button.disabled = false
 	print("Save Failed: ", err)
+
+func apply_theme_colors() -> void:
+	_update_bg_color()
+	if ui_manager:
+		var layout_option = ui_manager.get_node_or_null("Control/FooterHBox/LayoutOption") as OptionButton
+		if not layout_option:
+			layout_option = ui_manager.get_node_or_null("Control/HBoxContainer/LayoutOption") as OptionButton
+		if layout_option:
+			var btn_style = ThemeConfig.create_button_style(ThemeConfig.PRIMARY, 4, ThemeConfig.RADIUS_XL)
+			btn_style.content_margin_left = 20
+			btn_style.content_margin_right = 20
+			btn_style.content_margin_top = 10
+			btn_style.content_margin_bottom = 10
+			var btn_pressed = ThemeConfig.create_pressed_style(ThemeConfig.PRIMARY, ThemeConfig.RADIUS_XL)
+			btn_pressed.content_margin_left = 20
+			btn_pressed.content_margin_right = 20
+			ThemeConfig.apply_option_button_theme(layout_option, btn_style, btn_pressed)
+	var dialog = get_node_or_null("TitleDialog") as ConfirmationDialog
+	if dialog:
+		ThemeConfig.apply_dialog_theme(dialog)
+	if title_input:
+		ThemeConfig.apply_line_edit_theme(title_input)
+
+func _update_bg_color() -> void:
+	var bg_rect = get_node_or_null("Background")
+	if bg_rect and bg_rect is ColorRect:
+		bg_rect.color = GameSave.get_current_bg_color()
+	var hand_bg = get_node_or_null("HandBackground")
+	if hand_bg and hand_bg.has_method("queue_redraw"):
+		hand_bg.queue_redraw()

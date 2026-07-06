@@ -2,6 +2,13 @@ class_name HandBackground extends Node2D
 
 var layout_id: int = 0
 
+func _ready() -> void:
+	if GameSave:
+		GameSave.customization_changed.connect(queue_redraw)
+
+func apply_theme_colors() -> void:
+	queue_redraw()
+
 func _draw() -> void:
 	if layout_id == 0:
 		_draw_layout_hands()
@@ -14,7 +21,7 @@ func _draw_layout_hands() -> void:
 	pass
 
 func _draw_layout_board() -> void:
-	var board_color = Color("e6d8ce")
+	var board_color = GameSave.get_current_board_color()
 	var shadow_color = Color(0, 0, 0, 0.05)
 	var rect = Rect2(240, 100, 800, 520)
 	draw_rect(Rect2(rect.position + Vector2(0, 10), rect.size), shadow_color, true, 40.0)
@@ -27,7 +34,7 @@ func _draw_layout_board() -> void:
 		draw_circle(p, 45.0, Color("ffffff").blend(Color(0,0,0,0.1)))
 
 func _draw_layout_pyramid() -> void:
-	var base_color = Color("d4e6ce")
+	var base_color = GameSave.get_current_board_color().lightened(0.05)
 	var shadow_color = Color(0, 0, 0, 0.05)
 	
 	var positions = PinLayout.get_positions(2)
@@ -37,7 +44,7 @@ func _draw_layout_pyramid() -> void:
 		points.append(positions[i])
 	points.append(positions[0])
 	
-	var line_color = Color("b5ccad")
+	var line_color = base_color.darkened(0.15)
 	draw_polyline(points, shadow_color, 80.0, true)
 	draw_polyline(points, base_color, 80.0, true)
 	

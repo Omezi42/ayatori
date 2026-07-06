@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="106" height="104" viewBox="11 13 106 104" fill="none">
+  <!-- 屋根（急勾配三角）: 頂点(64,14) → 底辺(12,64) ～ (116,64) -->
+  <path d="M64 14L116 64H12L64 14Z" fill="white"/>
+  <!-- 納屋本体（アーチ扉付き、evenodd で扉開口）: y64～116, x20～108 -->
+  <path d="M20 64H108V116H20V64Z     M52 116V90C52 83.373 57.373 78 64 78C70.627 78 76 83.373 76 90V116Z" fill="white" fill-rule="evenodd"/>
+</svg>

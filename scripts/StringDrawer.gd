@@ -14,6 +14,8 @@ var current_mouse_pos: Vector2 = Vector2.ZERO
 # 入力ロック（クリア演出中など）
 var is_input_locked: bool = false
 
+var current_highlighted_finger_id: int = -1
+
 # ドラッグ結果シグナル（線分を引っ張って指にドロップした時に発火）
 signal segment_dropped_on_finger(segment_index: int, finger_id: int)
 
@@ -21,7 +23,7 @@ const HIT_RADIUS := 25.0        # 線分のヒット判定半径(px)
 const FINGER_DROP_RADIUS := 50.0 # 指ドロップ判定半径(px)
 
 var default_width: float = 16.0
-var dragging_width: float = 10.0
+var dragging_width: float = 8.0
 
 func _ready() -> void:
 	if string_manager:
@@ -38,11 +40,43 @@ func _ready() -> void:
 		var mat = ShaderMaterial.new()
 		mat.shader = shader
 		line.material = mat
+	
+	_update_string_color()
+	if GameSave:
+		GameSave.customization_changed.connect(_on_customization_changed)
+
+func _on_customization_changed() -> void:
+	_update_string_color()
+	update_line()
+
+func _update_string_color() -> void:
+	if line:
+		var col = GameSave.get_current_string_color()
+		line.default_color = col
+		if line.material and line.material is ShaderMaterial:
+			line.material.set_shader_parameter("base_color", col)
 
 func _process(_delta: float) -> void:
 	if is_dragging:
 		current_mouse_pos = get_global_mouse_position()
 		update_line()
+		
+		# ハイライトの更新処理
+		var hover_id = _find_finger_at(current_mouse_pos)
+		if hover_id >= 0 and string_manager.current_string.has(hover_id):
+			hover_id = -1
+			
+		if hover_id != current_highlighted_finger_id:
+			if current_highlighted_finger_id >= 0:
+				_set_finger_highlight(current_highlighted_finger_id, false)
+			current_highlighted_finger_id = hover_id
+			if current_highlighted_finger_id >= 0:
+				_set_finger_highlight(current_highlighted_finger_id, true)
+
+func _set_finger_highlight(finger_id: int, is_highlighted: bool) -> void:
+	for node in get_tree().get_nodes_in_group("fingers"):
+		if node is FingerNode and node.finger_id == finger_id:
+			node.set_highlight(is_highlighted)
 
 func _input(event: InputEvent) -> void:
 	if is_input_locked:
@@ -150,16 +184,35 @@ func _end_drag(mouse_pos: Vector2) -> void:
 	# ドラッグ状態をリセット（何もない場所でドロップした場合は元に戻る）
 	is_dragging = false
 	dragging_segment_index = -1
+	
+	if current_highlighted_finger_id >= 0:
+		_set_finger_highlight(current_highlighted_finger_id, false)
+		current_highlighted_finger_id = -1
+		
 	_set_tension(false)
+	update_line()
+
+func apply_theme_colors() -> void:
+	_update_string_color()
 	update_line()
 
 func _set_tension(is_tense: bool) -> void:
 	if not line or not line.material: return
 	var target_width = dragging_width if is_tense else default_width
-	var target_color = Color(1.0, 0.65, 0.85, 1.0) if is_tense else Color(0.96, 0.45, 0.65, 1.0)
+	var target_color: Color
+	if GameSave:
+		target_color = GameSave.get_current_string_tense_color() if is_tense else GameSave.get_current_string_color()
+	else:
+		target_color = ThemeConfig.string_tense if is_tense else ThemeConfig.string_normal
 	
-	var tween = create_tween().set_parallel(true).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
-	tween.tween_property(line, "width", target_width, 0.15)
+	var tween = create_tween().set_parallel(true)
+	if is_tense:
+		tween.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+		tween.tween_property(line, "width", target_width, 0.15)
+	else:
+		tween.set_trans(Tween.TRANS_SPRING).set_ease(Tween.EASE_OUT)
+		tween.tween_property(line, "width", target_width, 0.4)
+
 	
 	var current_color: Color = target_color
 	if line.material is ShaderMaterial:
