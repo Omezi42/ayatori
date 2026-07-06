@@ -212,6 +212,7 @@ func _on_fetch_failed(err: String) -> void:
 func _play_level(code: String, btn: Button) -> void:
 	btn.text = "読込中"
 	btn.disabled = true
+	FirebaseManager.increment_play_count(code)
 	FirebaseManager.load_level(code)
 
 func _on_level_loaded(target_sequence: Array, layout_id: int, title: String) -> void:
