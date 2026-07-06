@@ -833,20 +833,46 @@ func _generate_share_image(callback: Callable) -> void:
 	vp.render_target_update_mode = SubViewport.UPDATE_ONCE
 	
 	var bg = ColorRect.new()
-	bg.color = Color.WHITE
+	bg.color = ThemeConfig.BG_WHITE if ThemeConfig else Color.WHITE
 	bg.set_anchors_preset(Control.PRESET_FULL_RECT)
 	vp.add_child(bg)
 	
 	var inner = ColorRect.new()
-	inner.color = Color(0.95, 0.95, 0.95)
-	inner.position = Vector2(40, 40)
-	inner.size = Vector2(720, 420)
+	inner.color = Color(0.97, 0.97, 0.97)
+	inner.position = Vector2(40, 140)
+	inner.size = Vector2(720, 460)
 	vp.add_child(inner)
 	
+	var title_lbl = Label.new()
+	title_lbl.text = level_label.text if level_label else "あやとりパズル"
+	title_lbl.add_theme_font_size_override("font_size", 40)
+	title_lbl.add_theme_color_override("font_color", ThemeConfig.TEXT_DARK if ThemeConfig else Color(0.2, 0.2, 0.2))
+	title_lbl.position = Vector2(40, 30)
+	title_lbl.size = Vector2(720, 50)
+	vp.add_child(title_lbl)
+	
+	if result_stars_label and result_stars_label.text != "":
+		var stars_str = result_stars_label.text.split("\n")[0]
+		var stars_lbl = Label.new()
+		stars_lbl.text = stars_str
+		stars_lbl.add_theme_font_size_override("font_size", 48)
+		stars_lbl.add_theme_color_override("font_color", ThemeConfig.STAR_GOLD if ThemeConfig else Color(1, 0.8, 0))
+		stars_lbl.add_theme_color_override("font_outline_color", ThemeConfig.STAR_OUTLINE if ThemeConfig else Color(0.8, 0.6, 0))
+		stars_lbl.add_theme_constant_override("outline_size", 8)
+		stars_lbl.position = Vector2(40, 80)
+		vp.add_child(stars_lbl)
+	
+	var line_area = Control.new()
+	line_area.position = Vector2(40, 140)
+	line_area.size = Vector2(720, 460)
+	vp.add_child(line_area)
+	
 	var line = Line2D.new()
-	line.width = 12.0
-	line.default_color = ThemeConfig.PRIMARY
+	line.width = 16.0
+	line.default_color = GameSave.get_current_string_color() if GameSave and GameSave.has_method("get_current_string_color") else (ThemeConfig.PRIMARY if ThemeConfig else Color(1, 0, 0))
 	line.joint_mode = Line2D.LINE_JOINT_ROUND
+	line.begin_cap_mode = Line2D.LINE_CAP_ROUND
+	line.end_cap_mode = Line2D.LINE_CAP_ROUND
 	
 	var main_node = get_parent()
 	if main_node and main_node.has_node("StringDrawer"):
@@ -870,10 +896,10 @@ func _generate_share_image(callback: Callable) -> void:
 			var size_y = max_y - min_y
 			var scale_factor = 1.0
 			if size_x > 0 and size_y > 0:
-				scale_factor = min(680.0 / (size_x + 20), 380.0 / (size_y + 20))
+				scale_factor = min(680.0 / (size_x + 20), 420.0 / (size_y + 20))
 				
-			var offset_x = 40 + (720.0 - size_x * scale_factor) / 2.0
-			var offset_y = 40 + (420.0 - size_y * scale_factor) / 2.0
+			var offset_x = (720.0 - size_x * scale_factor) / 2.0
+			var offset_y = (460.0 - size_y * scale_factor) / 2.0
 			
 			for f_id in arr:
 				if fp.has(f_id):
@@ -884,24 +910,7 @@ func _generate_share_image(callback: Callable) -> void:
 				var p = fp[arr[0]]
 				var sp = Vector2((p.x - min_x) * scale_factor + offset_x, (p.y - min_y) * scale_factor + offset_y)
 				line.add_point(sp)
-	vp.add_child(line)
-	
-	var text_lbl = Label.new()
-	if level_label:
-		text_lbl.text = "「あやとりパズル」で " + level_label.text + " をクリア！"
-	else:
-		text_lbl.text = "「あやとりパズル」をクリア！"
-	text_lbl.add_theme_color_override("font_color", Color(0.2, 0.2, 0.2))
-	text_lbl.add_theme_font_size_override("font_size", 36)
-	text_lbl.position = Vector2(40, 500)
-	vp.add_child(text_lbl)
-	
-	var tag_lbl = Label.new()
-	tag_lbl.text = "#ゆびさきキャンバス #unityroom"
-	tag_lbl.add_theme_color_override("font_color", Color(0.5, 0.5, 0.5))
-	tag_lbl.add_theme_font_size_override("font_size", 28)
-	tag_lbl.position = Vector2(40, 560)
-	vp.add_child(tag_lbl)
+	line_area.add_child(line)
 	
 	add_child(vp)
 	await get_tree().process_frame
@@ -919,9 +928,9 @@ func _on_volume_changed(val: float) -> void:
 		AudioServer.set_bus_volume_db(bus_idx, linear_to_db(val / 100.0))
 
 func _on_share_pressed() -> void:
-	var share_text = "「あやとりパズル -ゆびさきキャンバス-」で遊びました！ #ゆびさきキャンバス #unityroom"
+	var share_text = "「あやとりパズル -ゆびさきキャンバス-」で遊びました！ #unityroom"
 	if level_label and level_label.text != "":
-		share_text = "「あやとりパズル」で " + level_label.text + " をクリアしたよ！ #ゆびさきキャンバス #unityroom"
+		share_text = "「あやとりパズル」で " + level_label.text + " をクリアしたよ！ #unityroom"
 		
 	_get_ready_share_image(func(buffer: PackedByteArray, _img: Image = null):
 		if OS.has_feature("web"):
@@ -948,25 +957,31 @@ func _on_share_pressed() -> void:
 			print("X Share text copied. Buffer size: ", buffer.size())
 	)
 
-func _on_res_share_icon_pressed() -> void:
+func toggle_share_menu(target_btn: Control) -> void:
 	if not share_menu_panel:
 		return
 	share_menu_panel.visible = !share_menu_panel.visible
 	if share_menu_panel.visible:
 		var panel_width = max(share_menu_panel.size.x, share_menu_panel.custom_minimum_size.x)
-		var btn_rect = res_share_icon_btn.get_global_rect()
+		var btn_rect = target_btn.get_global_rect()
 		share_menu_panel.global_position = Vector2(btn_rect.end.x - panel_width, btn_rect.end.y + 8)
 		share_menu_panel.scale = Vector2(0.8, 0.8)
 		share_menu_panel.pivot_offset = Vector2(panel_width, 0)
 		var tw = create_tween()
 		tw.tween_property(share_menu_panel, "scale", Vector2.ONE, 0.25).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 
+func _on_res_share_icon_pressed() -> void:
+	toggle_share_menu(res_share_icon_btn)
+
 func _on_copy_image_pressed() -> void:
 	if share_menu_panel:
 		share_menu_panel.hide()
-	var share_text = "「あやとりパズル -ゆびさきキャンバス-」で遊びました！ #ゆびさきキャンバス #unityroom"
+	var share_text = "「あやとりパズル -ゆびさきキャンバス-」で遊びました！ #unityroom"
 	if level_label and level_label.text != "":
-		share_text = "「あやとりパズル」で " + level_label.text + " をクリアしたよ！ #ゆびさきキャンバス #unityroom"
+		if level_label.text == "フリーモード":
+			share_text = "「あやとりパズル」のフリーモードで図形を作ったよ！ #unityroom"
+		else:
+			share_text = "「あやとりパズル」で " + level_label.text + " をクリアしたよ！ #unityroom"
 		
 	_get_ready_share_image(func(buffer: PackedByteArray, img: Image):
 		if OS.has_feature("web"):
@@ -1048,9 +1063,11 @@ func _on_copy_image_pressed() -> void:
 			""" % [str(Array(buffer)), share_text.replace("'", "\\'"), share_text.replace("'", "\\'")]
 			JavaScriptBridge.eval(js_code)
 		else:
-			if DisplayServer.has_method("clipboard_set_image") and img:
-				DisplayServer.call("clipboard_set_image", img)
-				show_message("画像をコピーしました！")
+			if img:
+				var path = "user://ayatori_share.png"
+				img.save_png(path)
+				OS.shell_open(ProjectSettings.globalize_path("user://"))
+				show_message("画像を出力しました！")
 			else:
 				DisplayServer.clipboard_set(share_text)
 				show_message("シェアテキストをコピーしました！")
@@ -1059,9 +1076,12 @@ func _on_copy_image_pressed() -> void:
 func _on_post_x_pressed() -> void:
 	if share_menu_panel:
 		share_menu_panel.hide()
-	var share_text = "「あやとりパズル -ゆびさきキャンバス-」で遊びました！ #ゆびさきキャンバス #unityroom"
+	var share_text = "「あやとりパズル -ゆびさきキャンバス-」で遊びました！ #unityroom"
 	if level_label and level_label.text != "":
-		share_text = "「あやとりパズル」で " + level_label.text + " をクリアしたよ！ #ゆびさきキャンバス #unityroom"
+		if level_label.text == "フリーモード":
+			share_text = "「あやとりパズル」のフリーモードで図形を作ったよ！ #unityroom"
+		else:
+			share_text = "「あやとりパズル」で " + level_label.text + " をクリアしたよ！ #unityroom"
 		
 	var tweet_url = "https://x.com/intent/tweet?text=" + share_text.uri_encode() + "&url=" + "https://unityroom.com/games/ayatori_puzzle".uri_encode()
 	
@@ -1128,9 +1148,11 @@ func _on_post_x_pressed() -> void:
 			""" % [str(Array(buffer)), tweet_url.replace("'", "\\'")]
 			JavaScriptBridge.eval(js_code)
 		else:
-			if DisplayServer.has_method("clipboard_set_image") and img:
-				DisplayServer.call("clipboard_set_image", img)
-				show_message("画像をコピーしました！")
+			if img:
+				var path = "user://ayatori_share.png"
+				img.save_png(path)
+				OS.shell_open(ProjectSettings.globalize_path("user://"))
+				show_message("画像を出力しました！")
 			else:
 				DisplayServer.clipboard_set(share_text)
 				show_message("シェアテキストをコピーしました！")

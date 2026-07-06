@@ -102,6 +102,23 @@ func _ready() -> void:
 		if ui_manager.goal_panel: ui_manager.goal_panel.hide()
 		if ui_manager.moves_label: ui_manager.moves_label.hide()
 		
+		var header = ui_manager.get_node_or_null("Control/HeaderHBox")
+		if header:
+			var free_mode_share_btn = Button.new()
+			free_mode_share_btn.name = "FreeModeShareBtn"
+			free_mode_share_btn.text = ""
+			free_mode_share_btn.custom_minimum_size = ThemeConfig.MIN_TAP_SIZE
+			free_mode_share_btn.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+			var share_tex = load("res://assets/ic_system_share_01_trimmed.svg")
+			if share_tex:
+				free_mode_share_btn.icon = share_tex
+				free_mode_share_btn.add_theme_constant_override("icon_max_width", 28)
+			free_mode_share_btn.pressed.connect(func():
+				if ui_manager.has_method("toggle_share_menu"):
+					ui_manager.toggle_share_menu(free_mode_share_btn)
+			)
+			header.add_child(free_mode_share_btn)
+		
 	var loading_overlay = CanvasLayer.new()
 	loading_overlay.layer = 100
 	var color_rect = ColorRect.new()

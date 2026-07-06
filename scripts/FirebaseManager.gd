@@ -20,14 +20,17 @@ var current_search_query: String = ""
 
 func _ready():
 	http_request_save = HTTPRequest.new()
+	http_request_save.accept_gzip = false
 	add_child(http_request_save)
 	http_request_save.request_completed.connect(_on_save_request_completed)
 
 	http_request_load = HTTPRequest.new()
+	http_request_load.accept_gzip = false
 	add_child(http_request_load)
 	http_request_load.request_completed.connect(_on_load_request_completed)
 
 	http_request_fetch = HTTPRequest.new()
+	http_request_fetch.accept_gzip = false
 	add_child(http_request_fetch)
 	http_request_fetch.request_completed.connect(_on_fetch_request_completed)
 
@@ -192,7 +195,26 @@ func _on_fetch_request_completed(result: int, response_code: int, headers: Packe
 					})
 			emit_signal("levels_fetched", levels)
 		else:
-			emit_signal("fetch_failed", "不正なデータ形式です")
+			var body_str = body.get_string_from_utf8()
+			if body_str == "":
+				emit_signal("fetch_failed", "レスポンスが空です")
+			elif body_str.begins_with("<"):
+				emit_signal("fetch_failed", "HTMLが返されました (通信環境を確認してください)")
+			else:
+				var json = JSON.new()
+				var err = json.parse(body_str)
+				if err != OK:
+					var preview = body_str.substr(0, 30).replace("\n", "")
+					emit_signal("fetch_failed", "JSON解析エラー: " + json.get_error_message() + " (" + preview + ")")
+				else:
+					if json.data is Dictionary:
+						if json.data.has("error"):
+							var err_msg = json.data["error"].get("message", "不明なエラー")
+							emit_signal("fetch_failed", "APIエラー: " + str(err_msg))
+						else:
+							emit_signal("fetch_failed", "予期せぬデータ構造です(Dict)")
+					else:
+						emit_signal("fetch_failed", "不正なデータ形式です")
 	else:
 		emit_signal("fetch_failed", "サーバーエラー: " + str(response_code))
 
@@ -206,6 +228,36 @@ func increment_like(code: String) -> void:
 					"fieldTransforms": [
 						{
 							"fieldPath": "likes",
+							"increment": {
+								"integerValue": "1"
+							}
+						}
+					]
+				}
+			}
+		]
+	}
+	
+	var json_str = JSON.stringify(body)
+	var headers = ["Content-Type: application/json"]
+	
+	var req = HTTPRequest.new()
+	add_child(req)
+	req.request_completed.connect(func(_result, _response_code, _h, _b):
+		req.queue_free()
+	)
+	req.request(url, headers, HTTPClient.METHOD_POST, json_str)
+
+func increment_play_count(code: String) -> void:
+	var url = "https://firestore.googleapis.com/v1/projects/" + PROJECT_ID + "/databases/(default)/documents:commit"
+	var body = {
+		"writes": [
+			{
+				"transform": {
+					"document": "projects/" + PROJECT_ID + "/databases/(default)/documents/levels/" + code,
+					"fieldTransforms": [
+						{
+							"fieldPath": "play_count",
 							"increment": {
 								"integerValue": "1"
 							}
