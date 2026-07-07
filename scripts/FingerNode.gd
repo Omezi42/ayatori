@@ -90,7 +90,7 @@ func _draw() -> void:
 	draw_circle(Vector2(-12, -12), radius * 0.3, shine_color)
 	draw_circle(Vector2(-20, -4), radius * 0.1, shine_color)
 	
-	if GameSave.is_advanced_mode and loop_count >= 2:
+	if GameSave.is_playing_advanced_level and loop_count >= 2:
 		var font = ThemeDB.fallback_font
 		if font:
 			var text = "x" + str(loop_count)

@@ -5,7 +5,7 @@ const BASE_URL = "https://firestore.googleapis.com/v1/projects/" + PROJECT_ID + 
 
 signal save_completed(code)
 signal save_failed(error)
-signal load_completed(target_sequence, layout_id, title)
+signal load_completed(target_sequence, layout_id, title, active_rules)
 signal load_failed(error)
 signal levels_fetched(levels_data)
 signal fetch_failed(error)
@@ -55,6 +55,12 @@ func save_level(title: String, target_sequence: Array[int], layout_id: int = 0):
 		
 	var created_at = Time.get_datetime_string_from_system(true, false) + "Z"
 	
+	var active_rules_arr = []
+	if GameSave:
+		for rule in GameSave.active_rules:
+			if GameSave.active_rules[rule]:
+				active_rules_arr.append({"stringValue": rule})
+				
 	var body = {
 		"fields": {
 			"title": { "stringValue": title },
@@ -62,7 +68,12 @@ func save_level(title: String, target_sequence: Array[int], layout_id: int = 0):
 			"play_count": { "integerValue": "0" },
 			"likes": { "integerValue": "0" },
 			"layout_id": { "integerValue": str(layout_id) },
-			"is_advanced": { "booleanValue": GameSave.is_advanced_mode if GameSave else false },
+			"is_advanced": { "booleanValue": GameSave.active_rules.get("multi_loop", false) if GameSave else false },
+			"active_rules": {
+				"arrayValue": {
+					"values": active_rules_arr
+				}
+			},
 			"target_sequence": {
 				"arrayValue": {
 					"values": values
@@ -117,16 +128,21 @@ func _on_load_request_completed(result: int, response_code: int, headers: Packed
 			if json["fields"].has("layout_id"):
 				layout_id = int(json["fields"]["layout_id"]["integerValue"])
 			
-			# is_advancedの読み取り（オプショナル）
-			if json["fields"].has("is_advanced"):
-				if GameSave:
-					GameSave.is_advanced_mode = json["fields"]["is_advanced"]["booleanValue"]
+			var active_rules_dict: Dictionary = {}
+			if json["fields"].has("active_rules"):
+				var rule_values = json["fields"]["active_rules"]["arrayValue"].get("values", [])
+				for item in rule_values:
+					active_rules_dict[item["stringValue"]] = true
+			else:
+				# Backward compatibility
+				if json["fields"].has("is_advanced") and json["fields"]["is_advanced"]["booleanValue"]:
+					active_rules_dict["multi_loop"] = true
 			
 			var title = "ユーザー作成ステージ"
 			if json["fields"].has("title"):
 				title = json["fields"]["title"]["stringValue"]
 				
-			emit_signal("load_completed", seq, layout_id, title)
+			emit_signal("load_completed", seq, layout_id, title, active_rules_dict)
 		else:
 			emit_signal("load_failed", "データが見つかりません")
 	elif response_code == 404:
@@ -175,7 +191,15 @@ func _on_fetch_request_completed(result: int, response_code: int, headers: Packe
 					var title = fields.get("title", {}).get("stringValue", "無題")
 					var play_count = int(fields.get("play_count", {}).get("integerValue", "0"))
 					var likes = int(fields.get("likes", {}).get("integerValue", "0"))
-					var is_advanced = fields.get("is_advanced", {}).get("booleanValue", false)
+					
+					var active_rules_dict: Dictionary = {}
+					if fields.has("active_rules"):
+						var rule_values = fields["active_rules"]["arrayValue"].get("values", [])
+						for item in rule_values:
+							active_rules_dict[item["stringValue"]] = true
+					else:
+						if fields.get("is_advanced", {}).get("booleanValue", false):
+							active_rules_dict["multi_loop"] = true
 					
 					# ローカルでの検索クエリ絞り込み
 					if current_search_query != "":
@@ -199,7 +223,7 @@ func _on_fetch_request_completed(result: int, response_code: int, headers: Packe
 						"likes": likes,
 						"target_sequence": seq,
 						"layout_id": layout_id,
-						"is_advanced": is_advanced
+						"active_rules": active_rules_dict
 					})
 			emit_signal("levels_fetched", levels)
 		else:

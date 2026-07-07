@@ -10,6 +10,10 @@ var finger_positions: Dictionary = {}
 var is_dragging: bool = false
 var dragging_segment_index: int = -1
 var current_mouse_pos: Vector2 = Vector2.ZERO
+var is_hovering_line: bool = false
+var hovered_segment_index: int = -1
+var line_tween: Tween
+var hover_line: Line2D
 
 # 入力ロック（クリア演出中など）
 var is_input_locked: bool = false
@@ -41,6 +45,15 @@ func _ready() -> void:
 		var mat = ShaderMaterial.new()
 		mat.shader = shader
 		line.material = mat
+		
+	hover_line = Line2D.new()
+	hover_line.texture_mode = Line2D.LINE_TEXTURE_STRETCH
+	hover_line.joint_mode = Line2D.LINE_JOINT_ROUND
+	hover_line.begin_cap_mode = Line2D.LINE_CAP_ROUND
+	hover_line.end_cap_mode = Line2D.LINE_CAP_ROUND
+	if shader:
+		hover_line.material = line.material.duplicate()
+	add_child(hover_line)
 	
 	_update_string_color()
 	if GameSave:
@@ -56,16 +69,28 @@ func _update_string_color() -> void:
 		line.default_color = col
 		if line.material and line.material is ShaderMaterial:
 			line.material.set_shader_parameter("base_color", col)
+	if hover_line:
+		var col = GameSave.get_current_string_color()
+		hover_line.default_color = col
+		if hover_line.material and hover_line.material is ShaderMaterial:
+			hover_line.material.set_shader_parameter("base_color", col)
 
 func _process(_delta: float) -> void:
+	if is_input_locked:
+		return
+		
+	var mouse_pos = get_global_mouse_position()
+	
 	if is_dragging:
-		current_mouse_pos = get_global_mouse_position()
+		current_mouse_pos = mouse_pos
 		update_line()
 		
 		# ハイライトの更新処理
 		var hover_id = _find_finger_at(current_mouse_pos)
 		if hover_id >= 0 and string_manager.current_string.has(hover_id):
-			hover_id = -1
+			# GameSave.is_playing_advanced_level の条件等はドロップ時に判定しているため、ここでは既存のままにするか調整
+			if not (GameSave and GameSave.is_playing_advanced_level):
+				hover_id = -1
 			
 		if hover_id != current_highlighted_finger_id:
 			if current_highlighted_finger_id >= 0:
@@ -73,6 +98,31 @@ func _process(_delta: float) -> void:
 			current_highlighted_finger_id = hover_id
 			if current_highlighted_finger_id >= 0:
 				_set_finger_highlight(current_highlighted_finger_id, true)
+	else:
+		var best_index = -1
+		if _find_finger_at(mouse_pos) < 0:
+			var arr = string_manager.current_string
+			if arr.size() >= 2:
+				var best_dist := HIT_RADIUS
+				var actual_points = _get_actual_points(arr)
+				for i in range(arr.size()):
+					if not finger_positions.has(arr[i]): continue
+					var next_idx = (i + 1) % arr.size()
+					if not finger_positions.has(arr[next_idx]): continue
+					
+					var p1 = actual_points[i]
+					var p2 = actual_points[next_idx]
+					var closest = Geometry2D.get_closest_point_to_segment(mouse_pos, p1, p2)
+					var dist = mouse_pos.distance_to(closest)
+					if dist < best_dist:
+						best_dist = dist
+						best_index = i
+						
+		if best_index != hovered_segment_index:
+			hovered_segment_index = best_index
+			is_hovering_line = (hovered_segment_index >= 0)
+			_update_hover_line_points()
+			_update_line_appearance()
 
 func _set_finger_highlight(finger_id: int, is_highlighted: bool) -> void:
 	for node in get_tree().get_nodes_in_group("fingers"):
@@ -117,7 +167,7 @@ func _get_actual_points(arr: Array[int]) -> Array[Vector2]:
 			continue
 			
 		var pos = finger_positions[f_id]
-		if GameSave.is_advanced_mode:
+		if GameSave.is_playing_advanced_level:
 			if not usage_counts.has(f_id):
 				usage_counts[f_id] = 0
 			var count = usage_counts[f_id]
@@ -168,6 +218,21 @@ func update_line() -> void:
 	var first_f_id = arr[0]
 	if finger_positions.has(first_f_id):
 		line.add_point(actual_points[0])
+		
+	_update_hover_line_points()
+
+func _update_hover_line_points() -> void:
+	if not hover_line or not string_manager:
+		return
+	hover_line.clear_points()
+	if hovered_segment_index >= 0 and not is_dragging:
+		var arr = string_manager.current_string
+		if hovered_segment_index < arr.size():
+			var actual_points = _get_actual_points(arr)
+			var next_idx = (hovered_segment_index + 1) % arr.size()
+			if finger_positions.has(arr[hovered_segment_index]) and finger_positions.has(arr[next_idx]):
+				hover_line.add_point(actual_points[hovered_segment_index])
+				hover_line.add_point(actual_points[next_idx])
 
 # ドラッグ開始の試行（線分をクリックしたか判定）
 # 【アプローチB】数学的な線分距離判定を使用
@@ -207,7 +272,7 @@ func _try_start_drag(mouse_pos: Vector2) -> void:
 		is_dragging = true
 		dragging_segment_index = best_index
 		current_mouse_pos = mouse_pos
-		_set_tension(true)
+		_update_line_appearance()
 
 # ドラッグ終了時の処理
 func _end_drag(mouse_pos: Vector2) -> void:
@@ -219,7 +284,7 @@ func _end_drag(mouse_pos: Vector2) -> void:
 	
 	if dropped_finger_id >= 0:
 		# すでにその指に糸が掛かっていない場合のみフック
-		if not string_manager.current_string.has(dropped_finger_id) or GameSave.is_advanced_mode:
+		if not string_manager.current_string.has(dropped_finger_id) or GameSave.is_playing_advanced_level:
 			segment_dropped_on_finger.emit(dragging_segment_index, dropped_finger_id)
 	
 	# ドラッグ状態をリセット（何もない場所でドロップした場合は元に戻る）
@@ -230,38 +295,57 @@ func _end_drag(mouse_pos: Vector2) -> void:
 		_set_finger_highlight(current_highlighted_finger_id, false)
 		current_highlighted_finger_id = -1
 		
-	_set_tension(false)
+	# マウス位置での再判定のため
+	hovered_segment_index = -1
+	is_hovering_line = false
+	_update_hover_line_points()
+	_update_line_appearance()
 	update_line()
 
 func apply_theme_colors() -> void:
 	_update_string_color()
 	update_line()
 
-func _set_tension(is_tense: bool) -> void:
+func _update_line_appearance() -> void:
 	if not line or not line.material: return
-	var target_width = dragging_width if is_tense else default_width
+	
+	var target_width: float
 	var target_color: Color
-	if GameSave:
-		target_color = GameSave.get_current_string_tense_color() if is_tense else GameSave.get_current_string_color()
-	else:
-		target_color = ThemeConfig.string_tense if is_tense else ThemeConfig.string_normal
 	
-	var tween = create_tween().set_parallel(true)
-	if is_tense:
-		tween.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
-		tween.tween_property(line, "width", target_width, 0.15)
+	if is_dragging:
+		target_width = dragging_width
+		target_color = GameSave.get_current_string_tense_color() if GameSave else ThemeConfig.string_tense
 	else:
-		tween.set_trans(Tween.TRANS_SPRING).set_ease(Tween.EASE_OUT)
-		tween.tween_property(line, "width", target_width, 0.4)
+		target_width = default_width
+		target_color = GameSave.get_current_string_color() if GameSave else ThemeConfig.string_normal
+	
+	if line_tween:
+		line_tween.kill()
+	line_tween = create_tween().set_parallel(true)
+	
+	if is_dragging:
+		line_tween.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+		line_tween.tween_property(line, "width", target_width, 0.15)
+	else:
+		line_tween.set_trans(Tween.TRANS_SPRING).set_ease(Tween.EASE_OUT)
+		line_tween.tween_property(line, "width", target_width, 0.4)
+		
+	if hover_line:
+		if is_hovering_line and not is_dragging:
+			line_tween.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+			line_tween.tween_property(hover_line, "width", default_width * 1.5, 0.15)
+		else:
+			hover_line.width = 0.0 # 非表示またはリセット
 
-	
 	var current_color: Color = target_color
 	if line.material is ShaderMaterial:
 		var current_param = (line.material as ShaderMaterial).get_shader_parameter("base_color")
 		if current_param != null and current_param is Color:
 			current_color = current_param
 		
-		tween.tween_method(func(col: Color):
+		line_tween.tween_method(func(col: Color):
 			if line and line.material and line.material is ShaderMaterial:
 				(line.material as ShaderMaterial).set_shader_parameter("base_color", col)
+			if hover_line and hover_line.material and hover_line.material is ShaderMaterial:
+				(hover_line.material as ShaderMaterial).set_shader_parameter("base_color", col)
 		, current_color, target_color, 0.15)

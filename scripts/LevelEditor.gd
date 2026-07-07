@@ -75,17 +75,15 @@ func _ready() -> void:
 			hbox.move_child(layout_option, 2)
 			layout_option.item_selected.connect(_on_layout_selected)
 			
-			# 拡張モードトグルをヘッダー/フッターに追加
-			var adv_btn = CheckButton.new()
-			adv_btn.name = "AdvModeButton"
-			adv_btn.text = "拡張モード"
-			adv_btn.button_pressed = GameSave.is_advanced_mode
-			adv_btn.toggled.connect(func(toggled_on):
-				GameSave.is_advanced_mode = toggled_on
-				GameSave.save_data()
-			)
-			hbox.add_child(adv_btn)
-			hbox.move_child(adv_btn, 3)
+			# ルール設定ボタンを追加
+			var rules_btn = Button.new()
+			rules_btn.name = "RulesButton"
+			rules_btn.text = "ルール設定"
+			ThemeConfig.apply_button_theme(rules_btn, sec_style, sec_pressed)
+			ThemeConfig.setup_button_animations(rules_btn)
+			rules_btn.pressed.connect(_on_rules_btn_pressed)
+			hbox.add_child(rules_btn)
+			hbox.move_child(rules_btn, 3)
 		
 		# タイトル入力ダイアログ
 		var dialog = ConfirmationDialog.new()
@@ -254,6 +252,31 @@ func _on_save_failed(err: String) -> void:
 		ui_manager.share_button.text = " 失敗 "
 		ui_manager.share_button.disabled = false
 	print("Save Failed: ", err)
+
+func _on_rules_btn_pressed() -> void:
+	var dialog = get_node_or_null("RulesDialog")
+	if not dialog:
+		dialog = AcceptDialog.new()
+		dialog.name = "RulesDialog"
+		dialog.title = "特別ルールの設定"
+		
+		var vbox = VBoxContainer.new()
+		vbox.add_theme_constant_override("separation", 10)
+		
+		var multi_loop_check = CheckButton.new()
+		multi_loop_check.text = "二重掛け（同じピンに何度も紐を掛ける）"
+		multi_loop_check.button_pressed = GameSave.active_rules.get("multi_loop", false)
+		multi_loop_check.toggled.connect(func(toggled_on):
+			GameSave.active_rules["multi_loop"] = toggled_on
+			GameSave.save_data()
+		)
+		vbox.add_child(multi_loop_check)
+		
+		dialog.add_child(vbox)
+		ThemeConfig.apply_dialog_theme(dialog)
+		add_child(dialog)
+		
+	dialog.popup_centered(Vector2(450, 200))
 
 func apply_theme_colors() -> void:
 	_update_bg_color()

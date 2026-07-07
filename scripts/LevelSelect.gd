@@ -13,41 +13,57 @@ func _ready() -> void:
 	ui_theme.set_constant("outline_size", "Label", 8)
 	self.theme = ui_theme
 
-	# ホームボタンをヘッダーに追加
 	var header = $VBoxContainer/Header
-	var home_btn = Button.new()
-	home_btn.name = "HomeButton"
-	home_btn.text = ""
-	home_btn.custom_minimum_size = ThemeConfig.MIN_TAP_SIZE
-	var home_tex = load("res://assets/ic_field_farm_01_trimmed.svg")
-	if home_tex:
-		home_btn.icon = home_tex
-		home_btn.add_theme_constant_override("icon_max_width", 28)
-	home_btn.pressed.connect(_on_back_pressed)
-	header.add_child(home_btn)
-	header.move_child(home_btn, 0)
 	
 	# スペーサー
 	var spacer = Control.new()
 	spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	header.add_child(spacer)
 	
-	# 拡張モードトグルをヘッダーに追加
-	var adv_btn = CheckButton.new()
-	adv_btn.name = "AdvModeButton"
-	adv_btn.text = "拡張"
-	adv_btn.button_pressed = GameSave.is_advanced_mode
-	adv_btn.toggled.connect(func(toggled_on):
-		GameSave.is_advanced_mode = toggled_on
-		GameSave.save_data()
-		_load_levels()
-	)
-	header.add_child(adv_btn)
+	# ルール設定ボタンをヘッダーに追加
+	var rules_btn = Button.new()
+	rules_btn.name = "RulesButton"
+	rules_btn.text = "ルール設定"
+	var sec_style = ThemeConfig.create_button_style(ThemeConfig.PRIMARY_LIGHT, 4, ThemeConfig.RADIUS_MD)
+	sec_style.content_margin_left = 12
+	sec_style.content_margin_right = 12
+	var sec_pressed = ThemeConfig.create_pressed_style(ThemeConfig.PRIMARY_LIGHT, ThemeConfig.RADIUS_MD)
+	sec_pressed.content_margin_left = 12
+	sec_pressed.content_margin_right = 12
+	ThemeConfig.apply_button_theme(rules_btn, sec_style, sec_pressed)
+	ThemeConfig.setup_button_animations(rules_btn)
+	rules_btn.pressed.connect(_on_rules_btn_pressed)
+	header.add_child(rules_btn)
 	
-	_load_levels()
+	_reload_levels_with_loading()
 	
 	back_button.pressed.connect(_on_back_pressed)
 	apply_theme_colors()
+
+func _reload_levels_with_loading() -> void:
+	var loading_rect = ColorRect.new()
+	loading_rect.name = "LoadingScreen"
+	loading_rect.color = Color(0.1, 0.1, 0.1, 1.0)
+	loading_rect.set_anchors_preset(Control.PRESET_FULL_RECT)
+	loading_rect.z_index = 100
+	var loading_label = Label.new()
+	loading_label.text = "Now Loading..."
+	loading_label.add_theme_font_size_override("font_size", 32)
+	loading_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	loading_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	loading_label.set_anchors_preset(Control.PRESET_FULL_RECT)
+	loading_rect.add_child(loading_label)
+	add_child(loading_rect)
+	
+	await get_tree().process_frame
+	await get_tree().process_frame
+	
+	_load_levels()
+	
+	if loading_rect and is_instance_valid(loading_rect):
+		var tw = create_tween()
+		tw.tween_property(loading_rect, "modulate:a", 0.0, 0.3)
+		tw.tween_callback(loading_rect.queue_free)
 
 func _load_levels() -> void:
 	# 既存のカードを削除
@@ -89,21 +105,6 @@ func apply_theme_colors() -> void:
 	ThemeConfig.apply_button_theme(back_button, back_normal, back_pressed)
 	back_button.add_theme_font_size_override("font_size", ThemeConfig.FONT_BODY)
 	ThemeConfig.setup_button_animations(back_button)
-	
-	# ホームボタンのスタイル
-	var header = $VBoxContainer/Header
-	var home_btn = header.get_node_or_null("HomeButton") as Button
-	if home_btn:
-		var home_normal = ThemeConfig.create_button_style(ThemeConfig.PRIMARY, 4, ThemeConfig.RADIUS_XL)
-		home_normal.content_margin_left = 12
-		home_normal.content_margin_right = 12
-		home_normal.content_margin_top = 8
-		home_normal.content_margin_bottom = 8
-		var home_pressed = home_normal.duplicate()
-		home_pressed.content_margin_top += 4
-		home_pressed.content_margin_bottom -= 4
-		ThemeConfig.apply_icon_button_theme(home_btn, home_normal, home_pressed)
-		ThemeConfig.setup_button_animations(home_btn)
 		
 	# ステージカードのスタイル更新
 	if grid_container:
@@ -215,6 +216,32 @@ func _on_level_selected(idx: int) -> void:
 	if FirebaseManager.has_meta("ugc_target"):
 		FirebaseManager.remove_meta("ugc_target")
 	get_tree().change_scene_to_file("res://scenes/Main.tscn")
+
+func _on_rules_btn_pressed() -> void:
+	var dialog = get_node_or_null("RulesDialog")
+	if not dialog:
+		dialog = AcceptDialog.new()
+		dialog.name = "RulesDialog"
+		dialog.title = "特別ルールの設定"
+		
+		var vbox = VBoxContainer.new()
+		vbox.add_theme_constant_override("separation", 10)
+		
+		var multi_loop_check = CheckButton.new()
+		multi_loop_check.text = "二重掛け（同じピンに何度も紐を掛ける）"
+		multi_loop_check.button_pressed = GameSave.active_rules.get("multi_loop", false)
+		multi_loop_check.toggled.connect(func(toggled_on):
+			GameSave.active_rules["multi_loop"] = toggled_on
+			GameSave.save_data()
+			_reload_levels_with_loading()
+		)
+		vbox.add_child(multi_loop_check)
+		
+		dialog.add_child(vbox)
+		ThemeConfig.apply_dialog_theme(dialog)
+		add_child(dialog)
+		
+	dialog.popup_centered(Vector2(450, 200))
 
 func _create_thumbnail(sequence: Array, layout_id: int, parent_control: Control) -> void:
 	var line = Line2D.new()

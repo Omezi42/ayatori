@@ -215,10 +215,11 @@ func _play_level(code: String, btn: Button) -> void:
 	FirebaseManager.increment_play_count(code)
 	FirebaseManager.load_level(code)
 
-func _on_level_loaded(target_sequence: Array, layout_id: int, title: String) -> void:
+func _on_level_loaded(target_sequence: Array, layout_id: int, title: String, active_rules: Dictionary = {}) -> void:
 	FirebaseManager.set_meta("ugc_target", target_sequence)
 	FirebaseManager.set_meta("ugc_layout_id", layout_id)
 	FirebaseManager.set_meta("ugc_title", title)
+	FirebaseManager.set_meta("ugc_active_rules", active_rules)
 	get_tree().change_scene_to_file("res://scenes/Main.tscn")
 
 func _on_load_failed(err: String) -> void:

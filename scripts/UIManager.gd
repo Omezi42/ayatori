@@ -42,6 +42,7 @@ var res_share_icon_btn: Button
 var share_menu_panel: PanelContainer
 var copy_image_btn: Button
 var post_x_btn: Button
+var res_select_btn: Button
 
 var ui_target_drawer: TargetDrawer
 var guide_enabled: bool = false
@@ -196,7 +197,9 @@ func _setup_settings_panel() -> void:
 	settings_panel = PanelContainer.new()
 	settings_panel.visible = false
 	settings_panel.custom_minimum_size = Vector2(320, 0)
-	settings_panel.position = Vector2(920, 300)
+	settings_panel.grow_horizontal = Control.GROW_DIRECTION_END
+	settings_panel.grow_vertical = Control.GROW_DIRECTION_BEGIN
+	settings_panel.position = Vector2(920, 620)
 	settings_panel.add_theme_stylebox_override("panel", ThemeConfig.create_settings_panel_style())
 	
 	var set_vbox = VBoxContainer.new()
@@ -370,12 +373,12 @@ func _setup_dynamic_nodes() -> void:
 	next_button.pressed.connect(_on_next_pressed)
 	vbox.add_child(next_button)
 	
-	var select_btn = Button.new()
-	select_btn.text = "ステージ選択にもどる"
-	select_btn.add_theme_font_size_override("font_size", ThemeConfig.FONT_BODY)
-	select_btn.custom_minimum_size = ThemeConfig.MIN_TAP_SIZE
-	select_btn.pressed.connect(func(): _transition_to_scene("res://scenes/LevelSelect.tscn"))
-	vbox.add_child(select_btn)
+	res_select_btn = Button.new()
+	res_select_btn.text = "ステージ選択にもどる"
+	res_select_btn.add_theme_font_size_override("font_size", ThemeConfig.FONT_BODY)
+	res_select_btn.custom_minimum_size = ThemeConfig.MIN_TAP_SIZE
+	res_select_btn.pressed.connect(_on_res_select_pressed)
+	vbox.add_child(res_select_btn)
 	
 	# シェアメニューパネル（画像をコピーとXに投稿）
 	share_menu_panel = PanelContainer.new()
@@ -727,6 +730,15 @@ func show_result_panel() -> void:
 		message_label.modulate.a = 0.0
 	if share_menu_panel:
 		share_menu_panel.hide()
+		
+	if res_select_btn:
+		if FirebaseManager.has_meta("is_daily") and FirebaseManager.get_meta("is_daily") == true:
+			res_select_btn.text = "タイトルにもどる"
+		elif FirebaseManager.has_meta("ugc_target"):
+			res_select_btn.text = "お題を探すにもどる"
+		else:
+			res_select_btn.text = "ステージ選択にもどる"
+			
 	if result_panel:
 		result_panel.show()
 		result_panel.scale = Vector2.ZERO
@@ -796,6 +808,14 @@ func set_hint_thinking(is_thinking: bool) -> void:
 		tw.tween_property(hint_thinking_panel, "modulate:a", 0.0, 0.2).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN)
 		tw.tween_property(hint_thinking_panel, "scale", Vector2(0.9, 0.9), 0.2).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN)
 		tw.chain().tween_callback(hint_thinking_panel.hide)
+
+func _on_res_select_pressed() -> void:
+	if FirebaseManager.has_meta("is_daily") and FirebaseManager.get_meta("is_daily") == true:
+		_transition_to_scene("res://scenes/Title.tscn")
+	elif FirebaseManager.has_meta("ugc_target"):
+		_transition_to_scene("res://scenes/LevelBrowser.tscn")
+	else:
+		_transition_to_scene("res://scenes/LevelSelect.tscn")
 
 func _on_undo_pressed() -> void:
 	if string_manager:

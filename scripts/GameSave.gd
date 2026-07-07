@@ -15,6 +15,9 @@ var current_bg: int = 0
 var unlocked_strings: Array = [0]
 var current_string: int = 0
 var is_advanced_mode: bool = false
+var active_rules: Dictionary = {}
+var is_playing_advanced_level: bool = false
+var playing_active_rules: Dictionary = {}
 
 
 const PIN_ITEMS = [
@@ -61,7 +64,8 @@ func save_data() -> void:
 		"current_bg": current_bg,
 		"unlocked_strings": unlocked_strings,
 		"current_string": current_string,
-		"is_advanced_mode": is_advanced_mode
+		"is_advanced_mode": is_advanced_mode,
+		"active_rules": active_rules
 	}
 	var file = FileAccess.open(SAVE_PATH, FileAccess.WRITE)
 	if file:
@@ -86,6 +90,16 @@ func load_data() -> void:
 				if json.has("unlocked_strings"): unlocked_strings = json["unlocked_strings"]
 				if json.has("current_string"): current_string = int(json["current_string"])
 				if json.has("is_advanced_mode"): is_advanced_mode = bool(json["is_advanced_mode"])
+				if json.has("active_rules"): 
+					active_rules = json["active_rules"]
+				else:
+					if is_advanced_mode:
+						active_rules["multi_loop"] = true
+
+func has_rule(rule_name: String) -> bool:
+	if is_playing_advanced_level:
+		return playing_active_rules.get(rule_name, false)
+	return active_rules.get(rule_name, false)
 
 func is_unlocked(category: String, id: int) -> bool:
 	var arr = []
@@ -253,7 +267,9 @@ func add_settings_to(target: Node) -> void:
 	settings_panel.name = "GameSaveSettingsPanel"
 	settings_panel.visible = false
 	settings_panel.custom_minimum_size = Vector2(300, 0)
-	settings_panel.position = Vector2(920, 360)
+	settings_panel.grow_horizontal = Control.GROW_DIRECTION_END
+	settings_panel.grow_vertical = Control.GROW_DIRECTION_BEGIN
+	settings_panel.position = Vector2(920, 620)
 	settings_panel.add_theme_stylebox_override("panel", ThemeConfig.create_settings_panel_style())
 	
 	var set_vbox = VBoxContainer.new()

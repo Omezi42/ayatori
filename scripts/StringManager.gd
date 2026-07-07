@@ -9,6 +9,7 @@ var current_time_counter: int = 0
 var optimal_moves_cache: int = -1
 var _hint_cache: Dictionary = {}
 var _hint_cache_mutex: Mutex = Mutex.new()
+var layout_id: int = 0
 
 signal string_changed
 
@@ -82,15 +83,52 @@ func get_edge_set(seq: Array[int]) -> Array:
 	var norm = _normalize_sequence(seq)
 	if norm.is_empty(): return []
 	var edges = {}
+	var positions = PinLayout.get_positions(layout_id)
+	
 	for i in range(norm.size()):
 		var u = norm[i]
 		var v = norm[(i + 1) % norm.size()]
 		if u != v: # 無視（同じ点への自己ループは描画されない）
-			var edge_key = str(min(u, v)) + "-" + str(max(u, v))
-			edges[edge_key] = true
+			var sub_edges = _get_sub_edges(u, v, positions)
+			for edge_key in sub_edges:
+				edges[edge_key] = true
 	var keys = edges.keys()
 	keys.sort()
 	return keys
+
+func _get_sub_edges(u: int, v: int, positions: Array[Vector2]) -> Array[String]:
+	if positions.is_empty() or u < 0 or v < 0 or u >= positions.size() or v >= positions.size():
+		return [str(min(u, v)) + "-" + str(max(u, v))]
+		
+	var pu = positions[u]
+	var pv = positions[v]
+	
+	var points_on_line = []
+	for w in range(positions.size()):
+		var pw = positions[w]
+		if w == u or w == v:
+			points_on_line.append(w)
+			continue
+			
+		# Bounding box check
+		if min(pu.x, pv.x) <= pw.x and pw.x <= max(pu.x, pv.x) and \
+		   min(pu.y, pv.y) <= pw.y and pw.y <= max(pu.y, pv.y):
+			# Cross product check for collinearity
+			var cross = (pw.x - pu.x) * (pv.y - pu.y) - (pw.y - pu.y) * (pv.x - pu.x)
+			if abs(cross) < 0.1:
+				points_on_line.append(w)
+				
+	# Sort points_on_line by distance to pu
+	points_on_line.sort_custom(func(a, b): return pu.distance_squared_to(positions[a]) < pu.distance_squared_to(positions[b]))
+	
+	var sub_edges: Array[String] = []
+	for k in range(points_on_line.size() - 1):
+		var n1 = points_on_line[k]
+		var n2 = points_on_line[k+1]
+		if n1 != n2:
+			sub_edges.append(str(min(n1, n2)) + "-" + str(max(n1, n2)))
+			
+	return sub_edges
 
 func is_state_matching_target(state: Array[int], target: Array[int]) -> bool:
 	if target.is_empty() or state.is_empty():
@@ -319,10 +357,31 @@ func _generate_next_moves(state: Array[int]) -> Array[Dictionary]:
 	var state_set = {}
 	for x in state: state_set[x] = true
 	
+	var is_advanced = false
+	if Engine.has_singleton("GameSave"):
+		var gs = Engine.get_singleton("GameSave")
+		if gs and gs.has_method("has_rule"):
+			is_advanced = gs.has_rule("multi_loop")
+	elif is_inside_tree() and has_node("/root/GameSave"):
+		var gs = get_node("/root/GameSave")
+		if gs and gs.has_method("has_rule"):
+			is_advanced = gs.has_rule("multi_loop")
+	# Fallback if GameSave is autoloaded
+	elif typeof(GameSave) == TYPE_OBJECT:
+		if GameSave.has_method("has_rule"):
+			is_advanced = GameSave.has_rule("multi_loop")
+	
 	# 掛ける操作 (hook)
 	for f in range(10):
-		if not state_set.has(f):
+		if is_advanced or not state_set.has(f):
 			for i in range(state.size()):
+				# 拡張モード時は、隣接する同じ指に掛けるような無意味な操作を枝刈り
+				if is_advanced:
+					var prev_f = state[i]
+					var next_f = state[(i + 1) % state.size()]
+					if f == prev_f or f == next_f:
+						continue
+						
 				var nxt = state.duplicate()
 				nxt.insert(i + 1, f)
 				results.append({"move": {"type": "hook", "finger": f, "segment_index": i}, "next_state": nxt})
@@ -344,25 +403,35 @@ func _fallback_greedy_hint(current_norm: Array[int], target_norm: Array[int]) ->
 	var target_set = {}
 	for f in target_norm: target_set[f] = true
 	
-	# 1. 目標にない指があれば外す
+	var is_advanced = false
+	if typeof(GameSave) == TYPE_OBJECT and GameSave.has_method("has_rule"):
+		is_advanced = GameSave.has_rule("multi_loop")
+	
+	# 1. 目標にない指があれば外す (非拡張時のみ、または拡張時でも不要な指なら)
 	if current_norm.size() > 3:
 		for i in range(current_norm.size()):
 			if not target_set.has(current_norm[i]):
 				return {"type": "unhook", "finger": current_norm[i], "index": i}
 				
 	# 2. 目標にあるが現在ない指があれば、目標配列で隣接する指の間のセグメントに掛ける
+	# 拡張モードでは、目標配列にあって現在不足しているエッジを構成する指に掛ける
 	for f in target_norm:
-		if not current_set.has(f):
+		if is_advanced or not current_set.has(f):
 			var target_idx = target_norm.find(f)
 			var prev_f = target_norm[(target_idx - 1 + target_norm.size()) % target_norm.size()]
 			var next_f = target_norm[(target_idx + 1) % target_norm.size()]
 			
 			var best_seg = 0
+			var found_best = false
 			for i in range(current_norm.size()):
 				if current_norm[i] == prev_f or current_norm[(i + 1) % current_norm.size()] == next_f:
 					best_seg = i
+					found_best = true
 					break
-			return {"type": "hook", "finger": f, "segment_index": best_seg}
+			if found_best and (is_advanced or not current_set.has(f)):
+				return {"type": "hook", "finger": f, "segment_index": best_seg}
+			elif not is_advanced and not current_set.has(f):
+				return {"type": "hook", "finger": f, "segment_index": 0}
 			
 	# 3. 指の種類は合っているが並びが違う場合、適当な指を外して再構成を促す
 	if current_norm.size() > 3:
@@ -436,4 +505,3 @@ func calculate_optimal_moves_count(start_state: Array[int], target_state: Array[
 						queue_backward.push_back([nxt_state, c_depth + 1])
 						
 	return -1
-

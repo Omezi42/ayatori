@@ -32,6 +32,30 @@ func _ready() -> void:
 	if not bg_rect:
 		bg_rect = self
 	
+	# === ロード画面の表示 ===
+	var loading_rect = ColorRect.new()
+	loading_rect.name = "LoadingScreen"
+	loading_rect.color = Color(0.1, 0.1, 0.1, 1.0)
+	loading_rect.set_anchors_preset(Control.PRESET_FULL_RECT)
+	loading_rect.z_index = 100
+	var loading_label = Label.new()
+	loading_label.text = "Now Loading..."
+	loading_label.add_theme_font_size_override("font_size", 32)
+	loading_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	loading_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	loading_label.set_anchors_preset(Control.PRESET_FULL_RECT)
+	loading_rect.add_child(loading_label)
+	
+	var ui_node = get_node_or_null("../UIManager")
+	if ui_node:
+		ui_node.add_child(loading_rect)
+	else:
+		add_child(loading_rect)
+		
+	await get_tree().process_frame
+	await get_tree().process_frame
+	# ======================
+	
 	guide_drawer = TextureRect.new()
 	guide_drawer.modulate.a = 0.2
 	guide_drawer.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
@@ -101,6 +125,8 @@ func _ready() -> void:
 			elif string_manager and string_manager.has_method("calculate_optimal_moves_count"):
 				ld.optimal_moves = string_manager.calculate_optimal_moves_count(typed_init, typed_seq)
 			ld.layout_id = layout_id
+			if FirebaseManager.has_meta("ugc_active_rules"):
+				ld.active_rules = FirebaseManager.get_meta("ugc_active_rules")
 			_on_level_changed(-1, ld)
 		else:
 			if FirebaseManager.has_meta("selected_official_level"):
@@ -121,6 +147,12 @@ func _ready() -> void:
 		ui_manager.next_level_requested.connect(_on_next_level_requested)
 		ui_manager.guide_toggled.connect(_on_guide_toggled)
 		ui_manager.hint_requested.connect(_show_hint)
+		
+	# ロード画面を非表示
+	if is_instance_valid(loading_rect):
+		var tw = create_tween()
+		tw.tween_property(loading_rect, "modulate:a", 0.0, 0.3)
+		tw.tween_callback(loading_rect.queue_free)
 
 func _on_next_level_requested() -> void:
 	if level_manager:
@@ -151,6 +183,9 @@ func _on_level_changed(level_idx: int, level_data: LevelData) -> void:
 			
 	if guide_lines and guide_lines.has_method("set_layout"):
 		guide_lines.set_layout(layout_id)
+		
+	if string_manager:
+		string_manager.set("layout_id", layout_id)
 			
 	var positions = PinLayout.get_positions(layout_id)
 	
@@ -214,6 +249,9 @@ func _on_level_changed(level_idx: int, level_data: LevelData) -> void:
 				node.global_position = scaled_positions[id]
 				if string_drawer:
 					string_drawer.register_finger(id, scaled_positions[id])
+	if GameSave:
+		GameSave.is_playing_advanced_level = true
+		GameSave.playing_active_rules = level_data.active_rules.duplicate()
 
 	# 初期状態を保持
 	_current_initial_state = level_data.initial_sequence.duplicate()
@@ -288,7 +326,7 @@ func _on_finger_clicked(finger_id: int) -> void:
 		return
 	var arr = string_manager.current_string
 	var idx = -1
-	if GameSave.is_advanced_mode:
+	if GameSave and GameSave.has_rule("multi_loop"):
 		idx = string_manager.get_latest_index_of_finger(finger_id)
 	else:
 		idx = arr.find(finger_id)

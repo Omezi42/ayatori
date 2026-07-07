@@ -340,18 +340,28 @@ func apply_dialog_theme(dialog: AcceptDialog) -> void:
 	dialog.add_theme_font_size_override("title_font_size", FONT_BODY)
 	dialog.add_theme_color_override("title_color", TEXT_LIGHT)
 	
-	# タイトルバーのスタイル
-	var title_style = StyleBoxFlat.new()
-	title_style.bg_color = PRIMARY
-	title_style.corner_radius_top_left = RADIUS_LG
-	title_style.corner_radius_top_right = RADIUS_LG
-	title_style.corner_radius_bottom_left = 0
-	title_style.corner_radius_bottom_right = 0
-	title_style.content_margin_left = SPACING_MD
-	title_style.content_margin_right = SPACING_MD
-	title_style.content_margin_top = 10
-	title_style.content_margin_bottom = 10
-	dialog.add_theme_stylebox_override("titlebar", title_style)
+	# ウィンドウ（タイトルバーと外枠）のスタイル
+	var embed_style = StyleBoxFlat.new()
+	embed_style.bg_color = PRIMARY
+	embed_style.corner_radius_top_left = RADIUS_LG
+	embed_style.corner_radius_top_right = RADIUS_LG
+	embed_style.corner_radius_bottom_left = RADIUS_LG
+	embed_style.corner_radius_bottom_right = RADIUS_LG
+	embed_style.expand_margin_top = 36 # タイトルバーの高さ
+	embed_style.content_margin_left = 4
+	embed_style.content_margin_right = 4
+	embed_style.content_margin_top = 4
+	embed_style.content_margin_bottom = 4
+	embed_style.border_width_left = 4
+	embed_style.border_width_right = 4
+	embed_style.border_width_bottom = 4
+	embed_style.border_width_top = 4
+	embed_style.border_color = PRIMARY_LIGHT
+	embed_style.shadow_color = SHADOW
+	embed_style.shadow_size = 12
+	
+	dialog.add_theme_stylebox_override("embedded_border", embed_style)
+	dialog.add_theme_stylebox_override("embedded_unfocused_border", embed_style)
 	
 	# パネル本体のスタイル
 	var panel_style = StyleBoxFlat.new()
@@ -360,12 +370,6 @@ func apply_dialog_theme(dialog: AcceptDialog) -> void:
 	panel_style.corner_radius_top_right = 0
 	panel_style.corner_radius_bottom_left = RADIUS_LG
 	panel_style.corner_radius_bottom_right = RADIUS_LG
-	panel_style.border_width_left = 4
-	panel_style.border_width_right = 4
-	panel_style.border_width_bottom = 4
-	panel_style.border_color = PRIMARY_LIGHT
-	panel_style.shadow_color = SHADOW
-	panel_style.shadow_size = 12
 	panel_style.content_margin_left = SPACING_MD
 	panel_style.content_margin_right = SPACING_MD
 	panel_style.content_margin_top = SPACING_MD
@@ -376,9 +380,22 @@ func apply_dialog_theme(dialog: AcceptDialog) -> void:
 	for child in dialog.get_children():
 		if child is Label:
 			child.add_theme_color_override("font_color", TEXT_DARK)
+		elif child is CheckBox or child is CheckButton:
+			child.add_theme_color_override("font_color", TEXT_DARK)
+			child.add_theme_color_override("font_pressed_color", TEXT_DARK)
+			child.add_theme_color_override("font_hover_color", TEXT_DARK)
+			child.add_theme_color_override("font_hover_pressed_color", TEXT_DARK)
+			child.add_theme_color_override("font_focus_color", TEXT_DARK)
+			
 		for gc in child.get_children():
 			if gc is Label:
 				gc.add_theme_color_override("font_color", TEXT_DARK)
+			elif gc is CheckBox or gc is CheckButton:
+				gc.add_theme_color_override("font_color", TEXT_DARK)
+				gc.add_theme_color_override("font_pressed_color", TEXT_DARK)
+				gc.add_theme_color_override("font_hover_color", TEXT_DARK)
+				gc.add_theme_color_override("font_hover_pressed_color", TEXT_DARK)
+				gc.add_theme_color_override("font_focus_color", TEXT_DARK)
 	
 	# OKボタン
 	var ok_btn = dialog.get_ok_button()

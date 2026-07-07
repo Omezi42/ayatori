@@ -128,7 +128,9 @@ func _setup_settings_corner() -> void:
 	settings_panel = PanelContainer.new()
 	settings_panel.visible = false
 	settings_panel.custom_minimum_size = Vector2(300, 0)
-	settings_panel.position = Vector2(900, 380)
+	settings_panel.grow_horizontal = Control.GROW_DIRECTION_END
+	settings_panel.grow_vertical = Control.GROW_DIRECTION_BEGIN
+	settings_panel.position = Vector2(920, 640)
 	settings_panel.add_theme_stylebox_override("panel", ThemeConfig.create_settings_panel_style())
 	
 	var set_vbox = VBoxContainer.new()
@@ -169,19 +171,6 @@ func _setup_settings_corner() -> void:
 	var sep1 = HSeparator.new()
 	set_vbox.add_child(sep1)
 
-	# 拡張モードトグル
-	var adv_mode_btn = CheckButton.new()
-	adv_mode_btn.text = " 拡張モード (多重ループ)"
-	if GameSave:
-		adv_mode_btn.button_pressed = GameSave.is_advanced_mode
-		adv_mode_btn.toggled.connect(func(toggled_on):
-			GameSave.is_advanced_mode = toggled_on
-			GameSave.save_data()
-		)
-	set_vbox.add_child(adv_mode_btn)
-	
-	var sep2 = HSeparator.new()
-	set_vbox.add_child(sep2)
 	# 今日のお題（設定内に統合・SVGアイコン使用）
 	var daily_btn = Button.new()
 	daily_btn.text = " 今日のお題"
