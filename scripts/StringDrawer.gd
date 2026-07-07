@@ -21,6 +21,7 @@ signal segment_dropped_on_finger(segment_index: int, finger_id: int)
 
 const HIT_RADIUS := 25.0        # 線分のヒット判定半径(px)
 const FINGER_DROP_RADIUS := 50.0 # 指ドロップ判定半径(px)
+const MULTI_LOOP_OFFSET_RADIUS := 12.0 # 多重ループ時のオフセット半径(px)
 
 var default_width: float = 16.0
 var dragging_width: float = 8.0
@@ -104,6 +105,32 @@ func _find_finger_at(pos: Vector2) -> int:
 			closest_id = f_id
 	return closest_id
 
+# 配列の各要素に対応する実際の描画用座標（オフセット加味）を計算
+func _get_actual_points(arr: Array[int]) -> Array[Vector2]:
+	var points: Array[Vector2] = []
+	var usage_counts = {}
+	
+	for i in range(arr.size()):
+		var f_id = arr[i]
+		if not finger_positions.has(f_id):
+			points.append(Vector2.ZERO)
+			continue
+			
+		var pos = finger_positions[f_id]
+		if GameSave.is_advanced_mode:
+			if not usage_counts.has(f_id):
+				usage_counts[f_id] = 0
+			var count = usage_counts[f_id]
+			if count > 0:
+				var angle = count * (PI / 4.0)
+				var offset = Vector2(cos(angle), sin(angle)) * MULTI_LOOP_OFFSET_RADIUS
+				pos += offset
+			usage_counts[f_id] += 1
+			
+		points.append(pos)
+		
+	return points
+
 # StringManagerの状態に従ってLine2Dのポイントを更新
 func update_line() -> void:
 	if not line or not string_manager:
@@ -113,12 +140,25 @@ func update_line() -> void:
 	var arr = string_manager.current_string
 	
 	if arr.is_empty():
+		for node in get_tree().get_nodes_in_group("fingers"):
+			if node is FingerNode:
+				node.set_loop_count(0)
 		return
+		
+	var actual_points = _get_actual_points(arr)
+	
+	var finger_counts = {}
+	for f_id in arr:
+		finger_counts[f_id] = finger_counts.get(f_id, 0) + 1
+		
+	for node in get_tree().get_nodes_in_group("fingers"):
+		if node is FingerNode:
+			node.set_loop_count(finger_counts.get(node.finger_id, 0))
 		
 	for i in range(arr.size()):
 		var f_id = arr[i]
 		if finger_positions.has(f_id):
-			line.add_point(finger_positions[f_id])
+			line.add_point(actual_points[i])
 			
 			# ドラッグ中の線分であれば、中間にマウス位置を挿入
 			if is_dragging and i == dragging_segment_index:
@@ -127,7 +167,7 @@ func update_line() -> void:
 	# ループさせるために最初の点を最後にもう一度追加
 	var first_f_id = arr[0]
 	if finger_positions.has(first_f_id):
-		line.add_point(finger_positions[first_f_id])
+		line.add_point(actual_points[0])
 
 # ドラッグ開始の試行（線分をクリックしたか判定）
 # 【アプローチB】数学的な線分距離判定を使用
@@ -143,6 +183,7 @@ func _try_start_drag(mouse_pos: Vector2) -> void:
 	var arr = string_manager.current_string
 	var best_index := -1
 	var best_dist := HIT_RADIUS
+	var actual_points = _get_actual_points(arr)
 	
 	for i in range(arr.size()):
 		if not finger_positions.has(arr[i]):
@@ -151,8 +192,8 @@ func _try_start_drag(mouse_pos: Vector2) -> void:
 		if not finger_positions.has(arr[next_idx]):
 			continue
 		
-		var p1 = finger_positions[arr[i]]
-		var p2 = finger_positions[arr[next_idx]]
+		var p1 = actual_points[i]
+		var p2 = actual_points[next_idx]
 		
 		# Geometry2D を使って線分上の最近接点を算出
 		var closest = Geometry2D.get_closest_point_to_segment(mouse_pos, p1, p2)
@@ -178,7 +219,7 @@ func _end_drag(mouse_pos: Vector2) -> void:
 	
 	if dropped_finger_id >= 0:
 		# すでにその指に糸が掛かっていない場合のみフック
-		if not string_manager.current_string.has(dropped_finger_id):
+		if not string_manager.current_string.has(dropped_finger_id) or GameSave.is_advanced_mode:
 			segment_dropped_on_finger.emit(dragging_segment_index, dropped_finger_id)
 	
 	# ドラッグ状態をリセット（何もない場所でドロップした場合は元に戻る）

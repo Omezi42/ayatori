@@ -3,6 +3,9 @@ class_name StringManager extends Node
 var current_string: Array[int] = []
 var target_string: Array[int] = []
 var history: Array[Array] = []
+var history_hook_times: Array[Array] = []
+var hook_times: Array[int] = []
+var current_time_counter: int = 0
 var optimal_moves_cache: int = -1
 var _hint_cache: Dictionary = {}
 var _hint_cache_mutex: Mutex = Mutex.new()
@@ -19,12 +22,15 @@ func get_move_count() -> int:
 # 履歴を保存する
 func save_history() -> void:
 	history.append(current_string.duplicate())
+	history_hook_times.append(hook_times.duplicate())
 
 # 糸を指定の指に掛ける（線分を引っ張って掛ける操作）
 func hook_finger(segment_index: int, finger_id: int) -> void:
 	save_history()
+	current_time_counter += 1
 	# segment_index と segment_index+1 の間に finger_id を挿入
 	current_string.insert(segment_index + 1, finger_id)
+	hook_times.insert(segment_index + 1, current_time_counter)
 	string_changed.emit()
 
 # 指定の指から糸を外す
@@ -35,58 +41,75 @@ func unhook_finger(index: int) -> void:
 	
 	save_history()
 	current_string.remove_at(index)
+	hook_times.remove_at(index)
 	string_changed.emit()
 
 # 1手戻る
 func undo() -> void:
 	if history.size() > 0:
 		current_string = history.pop_back()
+		hook_times = history_hook_times.pop_back()
 		string_changed.emit()
 
 # リセット
 func reset_to_initial(initial_state: Array[int]) -> void:
 	history.clear()
+	history_hook_times.clear()
 	current_string = initial_state.duplicate()
+	hook_times.clear()
+	current_time_counter = 0
+	for i in range(current_string.size()):
+		hook_times.append(0)
 	string_changed.emit()
+
+# 特定の指に対して一番最後に掛けられた要素のインデックスを返す
+func get_latest_index_of_finger(finger_id: int) -> int:
+	var latest_idx = -1
+	var max_time = -1
+	for i in range(current_string.size()):
+		if current_string[i] == finger_id:
+			if hook_times.size() > i and hook_times[i] > max_time:
+				max_time = hook_times[i]
+				latest_idx = i
+	return latest_idx
 
 # 現在の配列が正解配列と一致するか判定する（シフト、逆順対応）
 func check_clear() -> bool:
 	return is_state_matching_target(current_string, target_string)
 
+func get_edge_set(seq: Array[int]) -> Array:
+	if seq.is_empty(): return []
+	var norm = _normalize_sequence(seq)
+	if norm.is_empty(): return []
+	var edges = {}
+	for i in range(norm.size()):
+		var u = norm[i]
+		var v = norm[(i + 1) % norm.size()]
+		if u != v: # 無視（同じ点への自己ループは描画されない）
+			var edge_key = str(min(u, v)) + "-" + str(max(u, v))
+			edges[edge_key] = true
+	var keys = edges.keys()
+	keys.sort()
+	return keys
+
 func is_state_matching_target(state: Array[int], target: Array[int]) -> bool:
 	if target.is_empty() or state.is_empty():
 		return false
 	
-	# 1. 配列の正規化（最初と最後が重複している場合は最後の要素を削除）
-	var current_norm = _normalize_sequence(state)
-	var target_norm = _normalize_sequence(target)
+	var edges_s = get_edge_set(state)
+	var edges_t = get_edge_set(target)
 	
-	# 正規化後の要素数が異なる場合は不一致
-	if current_norm.size() != target_norm.size():
+	if edges_s.size() == 0 or edges_t.size() == 0:
 		return false
 		
-	# 要素数が0の場合はクリア扱いにはしない（あるいは仕様次第）
-	if current_norm.size() == 0:
+	if edges_s.size() != edges_t.size():
 		return false
 		
-	var length = target_norm.size()
-	
-	# 2. シフト比較のためのダミー配列を作成 (2周分を連結)
-	var dummy: Array[int] = []
-	dummy.append_array(current_norm)
-	dummy.append_array(current_norm)
-	
-	# 3. 順方向（右回り等）のシフト一致確認
-	if _contains_sub_array(dummy, target_norm):
-		return true
-		
-	# 4. 逆順（リバース・左回り等）のシフト一致確認
-	var reversed_target = target_norm.duplicate()
-	reversed_target.reverse()
-	if _contains_sub_array(dummy, reversed_target):
-		return true
-		
-	return false
+	for i in range(edges_s.size()):
+		if edges_s[i] != edges_t[i]:
+			return false
+			
+	return true
 
 # 閉路を表す配列を正規化する（最初と最後が同じなら最後を取り除く）
 func _normalize_sequence(seq: Array[int]) -> Array[int]:
@@ -95,18 +118,7 @@ func _normalize_sequence(seq: Array[int]) -> Array[int]:
 		res.pop_back()
 	return res
 
-# dummy_array の中に target_sub_array が連続して含まれるかチェックするヘルパー
-func _contains_sub_array(dummy_array: Array[int], target_sub_array: Array[int]) -> bool:
-	var sub_len = target_sub_array.size()
-	for i in range(dummy_array.size() - sub_len + 1):
-		var match_found = true
-		for j in range(sub_len):
-			if dummy_array[i + j] != target_sub_array[j]:
-				match_found = false
-				break
-		if match_found:
-			return true
-	return false
+
 
 # ヒント用：両方向BFS＋ヒューリスティック枝刈り＋正規化キャッシュによる高速かつ完全な最短ルート探索
 # 次に行うべき最適アクションのディクショナリを返す
@@ -197,33 +209,10 @@ func get_heuristic_hint(current: Array[int], target: Array[int]) -> Dictionary:
 	_hint_cache_mutex.unlock()
 	return fallback_move
 
-# 状態の正規化キー（回転・反転の最小表現）を取得
+# 状態の正規化キー（エッジセットに基づく最小表現）を取得
 func _get_canonical_key(state: Array[int]) -> String:
-	var n = state.size()
-	if n == 0: return ""
-	if n == 1: return str(state[0])
-	
-	var s = ""
-	for x in state:
-		s += str(x)
-	
-	var best = s
-	var s2 = s + s
-	for i in range(1, n):
-		var sub = s2.substr(i, n)
-		if sub < best:
-			best = sub
-			
-	var rev_s = ""
-	for i in range(n - 1, -1, -1):
-		rev_s += str(state[i])
-	var rev_s2 = rev_s + rev_s
-	for i in range(n):
-		var sub = rev_s2.substr(i, n)
-		if sub < best:
-			best = sub
-			
-	return best
+	var edges = get_edge_set(state)
+	return ",".join(edges)
 
 # 両方向BFS探索による最短手生成
 func _search_bidirectional_bfs(start_state: Array[int], target_state: Array[int], target_key: String) -> Dictionary:
@@ -309,19 +298,19 @@ func _search_bidirectional_bfs(start_state: Array[int], target_state: Array[int]
 			
 	return {}
 
-# ヒューリスティック距離（集合差分による下界推定）
+# ヒューリスティック距離（エッジ集合差分による下界推定）
 func _heuristic_distance(state1: Array[int], state2: Array[int]) -> int:
 	var set1 = {}
-	for x in state1: set1[x] = true
+	for e in get_edge_set(state1): set1[e] = true
 	var set2 = {}
-	for x in state2: set2[x] = true
+	for e in get_edge_set(state2): set2[e] = true
 	
 	var diff1 = 0
-	for x in state1:
-		if not set2.has(x): diff1 += 1
+	for e in get_edge_set(state1):
+		if not set2.has(e): diff1 += 1
 	var diff2 = 0
-	for x in state2:
-		if not set1.has(x): diff2 += 1
+	for e in get_edge_set(state2):
+		if not set1.has(e): diff2 += 1
 	return diff1 + diff2
 
 # 可能で合法な全ての手と次状態を生成する

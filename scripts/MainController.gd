@@ -287,7 +287,12 @@ func _on_finger_clicked(finger_id: int) -> void:
 	if not string_manager:
 		return
 	var arr = string_manager.current_string
-	var idx = arr.find(finger_id)
+	var idx = -1
+	if GameSave.is_advanced_mode:
+		idx = string_manager.get_latest_index_of_finger(finger_id)
+	else:
+		idx = arr.find(finger_id)
+		
 	if idx != -1:
 		string_manager.unhook_finger(idx)
 		

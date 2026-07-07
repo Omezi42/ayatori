@@ -74,6 +74,18 @@ func _ready() -> void:
 			hbox.add_child(layout_option)
 			hbox.move_child(layout_option, 2)
 			layout_option.item_selected.connect(_on_layout_selected)
+			
+			# 拡張モードトグルをヘッダー/フッターに追加
+			var adv_btn = CheckButton.new()
+			adv_btn.name = "AdvModeButton"
+			adv_btn.text = "拡張モード"
+			adv_btn.button_pressed = GameSave.is_advanced_mode
+			adv_btn.toggled.connect(func(toggled_on):
+				GameSave.is_advanced_mode = toggled_on
+				GameSave.save_data()
+			)
+			hbox.add_child(adv_btn)
+			hbox.move_child(adv_btn, 3)
 		
 		# タイトル入力ダイアログ
 		var dialog = ConfirmationDialog.new()

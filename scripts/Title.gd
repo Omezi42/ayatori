@@ -166,9 +166,22 @@ func _setup_settings_corner() -> void:
 	)
 	set_vbox.add_child(theme_btns)
 	
-	var sep = HSeparator.new()
-	set_vbox.add_child(sep)
+	var sep1 = HSeparator.new()
+	set_vbox.add_child(sep1)
+
+	# 拡張モードトグル
+	var adv_mode_btn = CheckButton.new()
+	adv_mode_btn.text = " 拡張モード (多重ループ)"
+	if GameSave:
+		adv_mode_btn.button_pressed = GameSave.is_advanced_mode
+		adv_mode_btn.toggled.connect(func(toggled_on):
+			GameSave.is_advanced_mode = toggled_on
+			GameSave.save_data()
+		)
+	set_vbox.add_child(adv_mode_btn)
 	
+	var sep2 = HSeparator.new()
+	set_vbox.add_child(sep2)
 	# 今日のお題（設定内に統合・SVGアイコン使用）
 	var daily_btn = Button.new()
 	daily_btn.text = " 今日のお題"

@@ -62,6 +62,7 @@ func save_level(title: String, target_sequence: Array[int], layout_id: int = 0):
 			"play_count": { "integerValue": "0" },
 			"likes": { "integerValue": "0" },
 			"layout_id": { "integerValue": str(layout_id) },
+			"is_advanced": { "booleanValue": GameSave.is_advanced_mode if GameSave else false },
 			"target_sequence": {
 				"arrayValue": {
 					"values": values
@@ -116,6 +117,11 @@ func _on_load_request_completed(result: int, response_code: int, headers: Packed
 			if json["fields"].has("layout_id"):
 				layout_id = int(json["fields"]["layout_id"]["integerValue"])
 			
+			# is_advancedの読み取り（オプショナル）
+			if json["fields"].has("is_advanced"):
+				if GameSave:
+					GameSave.is_advanced_mode = json["fields"]["is_advanced"]["booleanValue"]
+			
 			var title = "ユーザー作成ステージ"
 			if json["fields"].has("title"):
 				title = json["fields"]["title"]["stringValue"]
@@ -169,6 +175,7 @@ func _on_fetch_request_completed(result: int, response_code: int, headers: Packe
 					var title = fields.get("title", {}).get("stringValue", "無題")
 					var play_count = int(fields.get("play_count", {}).get("integerValue", "0"))
 					var likes = int(fields.get("likes", {}).get("integerValue", "0"))
+					var is_advanced = fields.get("is_advanced", {}).get("booleanValue", false)
 					
 					# ローカルでの検索クエリ絞り込み
 					if current_search_query != "":
@@ -191,7 +198,8 @@ func _on_fetch_request_completed(result: int, response_code: int, headers: Packe
 						"play_count": play_count,
 						"likes": likes,
 						"target_sequence": seq,
-						"layout_id": layout_id
+						"layout_id": layout_id,
+						"is_advanced": is_advanced
 					})
 			emit_signal("levels_fetched", levels)
 		else:

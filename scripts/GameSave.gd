@@ -14,6 +14,8 @@ var unlocked_bgs: Array = [0]
 var current_bg: int = 0
 var unlocked_strings: Array = [0]
 var current_string: int = 0
+var is_advanced_mode: bool = false
+
 
 const PIN_ITEMS = [
 	{"id": 0, "name": "パステルピンク", "price": 0, "color": Color("#FFB6C1"), "shine": Color(1, 1, 1, 0.6)},
@@ -58,7 +60,8 @@ func save_data() -> void:
 		"unlocked_bgs": unlocked_bgs,
 		"current_bg": current_bg,
 		"unlocked_strings": unlocked_strings,
-		"current_string": current_string
+		"current_string": current_string,
+		"is_advanced_mode": is_advanced_mode
 	}
 	var file = FileAccess.open(SAVE_PATH, FileAccess.WRITE)
 	if file:
@@ -82,6 +85,7 @@ func load_data() -> void:
 				if json.has("current_bg"): current_bg = int(json["current_bg"])
 				if json.has("unlocked_strings"): unlocked_strings = json["unlocked_strings"]
 				if json.has("current_string"): current_string = int(json["current_string"])
+				if json.has("is_advanced_mode"): is_advanced_mode = bool(json["is_advanced_mode"])
 
 func is_unlocked(category: String, id: int) -> bool:
 	var arr = []

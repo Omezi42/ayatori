@@ -5,6 +5,12 @@ signal finger_clicked(id)
 signal finger_dropped_on(id)
 
 var is_drag_highlighted: bool = false
+var loop_count: int = 0
+
+func set_loop_count(count: int) -> void:
+	if loop_count != count:
+		loop_count = count
+		queue_redraw()
 
 func _ready() -> void:
 	# Area2Dの入力イベントを拾う
@@ -83,3 +89,13 @@ func _draw() -> void:
 	# ぷっくりしたハイライト（ツヤ）
 	draw_circle(Vector2(-12, -12), radius * 0.3, shine_color)
 	draw_circle(Vector2(-20, -4), radius * 0.1, shine_color)
+	
+	if GameSave.is_advanced_mode and loop_count >= 2:
+		var font = ThemeDB.fallback_font
+		if font:
+			var text = "x" + str(loop_count)
+			var font_size = 24
+			var text_size = font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size)
+			var text_pos = Vector2(radius + 10, text_size.y * 0.3)
+			draw_string_outline(font, text_pos, text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, 4, Color.BLACK)
+			draw_string(font, text_pos, text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, Color.WHITE)

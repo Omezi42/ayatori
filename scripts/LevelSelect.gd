@@ -27,17 +27,45 @@ func _ready() -> void:
 	header.add_child(home_btn)
 	header.move_child(home_btn, 0)
 	
+	# スペーサー
+	var spacer = Control.new()
+	spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	header.add_child(spacer)
+	
+	# 拡張モードトグルをヘッダーに追加
+	var adv_btn = CheckButton.new()
+	adv_btn.name = "AdvModeButton"
+	adv_btn.text = "拡張"
+	adv_btn.button_pressed = GameSave.is_advanced_mode
+	adv_btn.toggled.connect(func(toggled_on):
+		GameSave.is_advanced_mode = toggled_on
+		GameSave.save_data()
+		_load_levels()
+	)
+	header.add_child(adv_btn)
+	
+	_load_levels()
+	
+	back_button.pressed.connect(_on_back_pressed)
+	apply_theme_colors()
+
+func _load_levels() -> void:
+	# 既存のカードを削除
+	for child in grid_container.get_children():
+		child.queue_free()
+		
 	# レベルデータの読み込み
 	var level_manager = LevelManager.new()
 	level_manager.create_default_levels()
 	var levels = level_manager.level_data_list
 	
-	# ステージカードの生成
+	# ON時は高度なステージだけ抽出する等のロジックを入れる（ここでは暫定的にすべて表示するか、拡張モード専用ステージを用意する）
+	# （実装例：Advancedなステージフラグがあればそれでフィルタリング）
+	
 	for i in range(levels.size()):
+		# TODO: 拡張モードのON/OFFに応じて表示するステージを分ける
 		var card = _create_stage_card(i, levels[i])
 		grid_container.add_child(card)
-		
-	back_button.pressed.connect(_on_back_pressed)
 	
 	apply_theme_colors()
 
