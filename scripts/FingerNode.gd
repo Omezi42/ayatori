@@ -4,13 +4,20 @@ class_name FingerNode extends Area2D
 signal finger_clicked(id)
 signal finger_dropped_on(id)
 
+var base_scale: Vector2 = Vector2(1.0, 1.0)
 var is_drag_highlighted: bool = false
+
 var loop_count: int = 0
 
 func set_loop_count(count: int) -> void:
 	if loop_count != count:
 		loop_count = count
 		queue_redraw()
+
+func set_base_scale(new_scale: Vector2) -> void:
+	base_scale = new_scale
+	scale = base_scale
+
 
 func _ready() -> void:
 	# Area2Dの入力イベントを拾う
@@ -24,10 +31,11 @@ func apply_theme_colors() -> void:
 	queue_redraw()
 
 func _on_mouse_entered() -> void:
-	_animate_scale(Vector2(1.2, 1.2))
+	_animate_scale(base_scale * 1.2)
 
 func _on_mouse_exited() -> void:
-	_animate_scale(Vector2(1.0, 1.0))
+	_animate_scale(base_scale)
+
 
 func _animate_scale(target_scale: Vector2) -> void:
 	var tween = create_tween().set_trans(Tween.TRANS_SPRING).set_ease(Tween.EASE_OUT)
@@ -36,13 +44,14 @@ func _animate_scale(target_scale: Vector2) -> void:
 func _on_input_event(_viewport: Node, event: InputEvent, _shape_idx: int) -> void:
 	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
 		if event.pressed:
-			_animate_scale(Vector2(0.9, 0.9))
+			_animate_scale(base_scale * 0.9)
 			finger_clicked.emit(finger_id)
 		else:
 			if is_hovered():
-				_animate_scale(Vector2(1.2, 1.2))
+				_animate_scale(base_scale * 1.2)
 			else:
-				_animate_scale(Vector2(1.0, 1.0))
+				_animate_scale(base_scale)
+
 			# ドラッグ完了時のドロップ判定用
 			finger_dropped_on.emit(finger_id)
 
@@ -62,13 +71,12 @@ func set_highlight(highlighted: bool) -> void:
 		return
 	is_drag_highlighted = highlighted
 	if is_drag_highlighted:
-		_animate_scale(Vector2(1.3, 1.3))
-		queue_redraw()
+		_animate_scale(base_scale * 1.3)
 	else:
 		if is_hovered():
-			_animate_scale(Vector2(1.2, 1.2))
+			_animate_scale(base_scale * 1.2)
 		else:
-			_animate_scale(Vector2(1.0, 1.0))
+			_animate_scale(base_scale)
 		queue_redraw()
 
 func _draw() -> void:

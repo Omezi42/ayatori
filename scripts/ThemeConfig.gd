@@ -337,8 +337,13 @@ func apply_slider_theme(slider: Slider) -> void:
 func apply_dialog_theme(dialog: AcceptDialog) -> void:
 	if not dialog:
 		return
+	dialog.transparent = true
 	dialog.add_theme_font_size_override("title_font_size", FONT_BODY)
 	dialog.add_theme_color_override("title_color", TEXT_LIGHT)
+	
+	if dialog.has_method("get_label") and dialog.get_label():
+		dialog.get_label().add_theme_color_override("font_color", TEXT_DARK)
+
 	
 	# ウィンドウ（タイトルバーと外枠）のスタイル
 	var embed_style = StyleBoxFlat.new()

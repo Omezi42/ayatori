@@ -47,5 +47,16 @@ static func get_positions(layout_id: int) -> Array[Vector2]:
 				Vector2(530, 290), # 8: 左辺上
 				Vector2(640, 430)  # 9: 内部中央
 			]
+		3:
+			# ステージ4: 10x10 ボード (フリーモード限定)
+			var pos: Array[Vector2] = []
+			var start_x = 370.0
+			var start_y = 90.0
+			var spacing_x = 60.0
+			var spacing_y = 60.0
+			for y in range(10):
+				for x in range(10):
+					pos.append(Vector2(start_x + x * spacing_x, start_y + y * spacing_y))
+			return pos
 			
 	return get_positions(0)

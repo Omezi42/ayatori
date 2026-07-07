@@ -117,7 +117,11 @@ func _ready() -> void:
 			for s in seq:
 				typed_seq.append(int(s))
 			ld.target_sequence = typed_seq
-			var typed_init: Array[int] = [0, 4, 5, 9]
+			var typed_init: Array[int]
+			if layout_id == 3:
+				typed_init = [33, 36, 66, 63]
+			else:
+				typed_init = [0, 4, 5, 9]
 			ld.initial_sequence = typed_init
 			ld.optimal_moves = -1
 			if FirebaseManager.has_meta("ugc_optimal_moves"):
@@ -136,7 +140,8 @@ func _ready() -> void:
 	else:
 		# 簡易フォールバック
 		if string_manager:
-			string_manager.reset_to_initial([0, 4, 5, 9])
+			var init_arr: Array[int] = [0, 4, 5, 9]
+			string_manager.reset_to_initial(init_arr)
 		if string_drawer:
 			string_drawer.update_line()
 		
@@ -166,6 +171,7 @@ func _on_guide_toggled(is_visible: bool) -> void:
 
 func _on_level_changed(level_idx: int, level_data: LevelData) -> void:
 	_is_calculating_hint = false
+	_is_waiting_for_hint = false
 	if ui_manager and ui_manager.has_method("set_hint_thinking"):
 		ui_manager.set_hint_thinking(false)
 		
@@ -242,13 +248,39 @@ func _on_level_changed(level_idx: int, level_data: LevelData) -> void:
 		
 	if string_drawer:
 		string_drawer.finger_positions.clear()
+		
+	var current_fingers = get_tree().get_nodes_in_group("fingers")
+	if current_fingers.size() > 0:
+		var fingers_parent = current_fingers[0].get_parent()
+		if scaled_positions.size() > current_fingers.size():
+			for i in range(current_fingers.size(), scaled_positions.size()):
+				var area = Area2D.new()
+				area.name = "Finger" + str(i)
+				area.set_script(load("res://scripts/FingerNode.gd"))
+				var shape = CollisionShape2D.new()
+				var circle = CircleShape2D.new()
+				circle.radius = 40.0
+				shape.shape = circle
+				area.add_child(shape)
+				area.add_to_group("fingers")
+				area.set("finger_id", i)
+				fingers_parent.add_child(area)
+				area.finger_clicked.connect(_on_finger_clicked)
+
+	var target_base_scale = Vector2(0.25, 0.25) if layout_id == 3 else Vector2(1.0, 1.0)
 	for node in get_tree().get_nodes_in_group("fingers"):
 		if node is FingerNode:
+			if node.has_method("set_base_scale"):
+				node.set_base_scale(target_base_scale)
 			var id = node.finger_id
 			if id >= 0 and id < scaled_positions.size():
+				node.show()
 				node.global_position = scaled_positions[id]
 				if string_drawer:
 					string_drawer.register_finger(id, scaled_positions[id])
+			else:
+				node.hide()
+				node.global_position = Vector2(-9999, -9999)
 	if GameSave:
 		GameSave.is_playing_advanced_level = true
 		GameSave.playing_active_rules = level_data.active_rules.duplicate()
@@ -356,6 +388,9 @@ func _on_segment_dropped_on_finger(segment_index: int, finger_id: int) -> void:
 func _update_moves_ui() -> void:
 	if ui_manager and ui_manager.has_method("update_moves_display") and string_manager:
 		ui_manager.update_moves_display(string_manager.get_move_count(), _current_optimal_moves)
+	
+	if current_state == GameState.PLAYING and string_manager and not string_manager.check_clear():
+		_trigger_background_hint_calculation()
 
 func _handle_game_clear() -> void:
 	print("Level Clear!")
@@ -396,26 +431,42 @@ func _handle_game_clear() -> void:
 	if ui_manager:
 		ui_manager.show_result_panel()
 
-func _show_hint() -> void:
+var _is_waiting_for_hint: bool = false
+
+func _trigger_background_hint_calculation() -> void:
 	if _is_calculating_hint: return
+	if not string_manager or string_manager.current_string.is_empty() or string_manager.target_string.is_empty(): return
+	
+	var quick_hint = string_manager.get_quick_hint(string_manager.current_string, string_manager.target_string)
+	if not quick_hint.has("_need_deep_search"): return
+	
+	_is_calculating_hint = true
+	_hint_calc_string = string_manager.current_string.duplicate()
+	WorkerThreadPool.add_task(_calculate_hint_async.bind(string_manager.current_string.duplicate(), string_manager.target_string.duplicate()))
+
+func _show_hint() -> void:
 	if current_state != GameState.PLAYING: return
 	if not string_manager or not string_drawer: return
 	if string_manager.current_string.is_empty() or string_manager.target_string.is_empty(): return
 	if string_manager.check_clear(): return
 	
-	# まず高速判定（キャッシュや1手読み）を試行
 	var quick_hint = string_manager.get_quick_hint(string_manager.current_string, string_manager.target_string)
 	if not quick_hint.has("_need_deep_search"):
 		_display_hint_result(quick_hint)
 		return
 		
-	# 重い探索が必要な場合、WorkerThreadPoolで非同期計算を行いゲームループのフリーズを防ぐ
+	if _is_calculating_hint:
+		_is_waiting_for_hint = true
+		if ui_manager and ui_manager.has_method("set_hint_thinking"):
+			ui_manager.set_hint_thinking(true)
+		return
+		
+	# 計算が走っていない場合（通常はないが念のため）
 	_is_calculating_hint = true
+	_is_waiting_for_hint = true
 	_hint_calc_string = string_manager.current_string.duplicate()
-	
 	if ui_manager and ui_manager.has_method("set_hint_thinking"):
 		ui_manager.set_hint_thinking(true)
-		
 	WorkerThreadPool.add_task(_calculate_hint_async.bind(string_manager.current_string.duplicate(), string_manager.target_string.duplicate()))
 
 func _calculate_hint_async(current_copy: Array[int], target_copy: Array[int]) -> void:
@@ -424,17 +475,28 @@ func _calculate_hint_async(current_copy: Array[int], target_copy: Array[int]) ->
 
 func _on_hint_calculated(hint: Dictionary) -> void:
 	_is_calculating_hint = false
+	
+	if current_state != GameState.PLAYING:
+		_is_waiting_for_hint = false
+		if ui_manager and ui_manager.has_method("set_hint_thinking"):
+			ui_manager.set_hint_thinking(false)
+		return
+		
+	if not string_manager or not string_drawer: return
+	
+	# 計算中にユーザーが糸の状態を変えていた場合、待ち状態なら新しい計算を開始
+	if string_manager.current_string != _hint_calc_string:
+		if _is_waiting_for_hint:
+			_trigger_background_hint_calculation()
+		return
+		
+	var was_waiting = _is_waiting_for_hint
+	_is_waiting_for_hint = false
 	if ui_manager and ui_manager.has_method("set_hint_thinking"):
 		ui_manager.set_hint_thinking(false)
 		
-	if current_state != GameState.PLAYING: return
-	if not string_manager or not string_drawer: return
-	
-	# 計算中にユーザーが糸の状態を変えていた場合は、古いヒントを破棄する
-	if string_manager.current_string != _hint_calc_string:
-		return
-		
-	_display_hint_result(hint)
+	if was_waiting:
+		_display_hint_result(hint)
 
 func _display_hint_result(hint: Dictionary) -> void:
 	if hint.is_empty(): return

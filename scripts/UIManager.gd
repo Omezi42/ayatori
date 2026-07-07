@@ -483,8 +483,10 @@ func _apply_premium_styles() -> void:
 	btn_pressed.content_margin_top += 4
 	btn_pressed.content_margin_bottom -= 4
 	
+	var free_mode_share_btn = get_node_or_null("Control/HeaderHBox/FreeModeShareBtn") as Button
+	
 	# 全ボタンにスタイル適用
-	for btn in [hint_button, undo_button, reset_button, share_button, settings_btn, home_btn, res_home_btn, res_share_icon_btn]:
+	for btn in [hint_button, undo_button, reset_button, share_button, settings_btn, home_btn, res_home_btn, res_share_icon_btn, free_mode_share_btn]:
 		if btn:
 			ThemeConfig.apply_icon_button_theme(btn, btn_normal, btn_pressed)
 			btn.add_theme_stylebox_override("hover", btn_hover)
@@ -605,6 +607,8 @@ func update_level_text(level_num: int, level_name: String = "") -> void:
 			level_label.text = "LEVEL " + str(level_num)
 		elif level_num < 0:
 			level_label.text = level_name
+		elif level_num == 0:
+			level_label.text = "ユーザー投稿ステージ「" + level_name + "」"
 		else:
 			level_label.text = "LV." + str(level_num) + " " + level_name
 

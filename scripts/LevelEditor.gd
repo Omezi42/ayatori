@@ -22,7 +22,10 @@ func _ready() -> void:
 		string_drawer.segment_dropped_on_finger.connect(_on_segment_dropped_on_finger)
 	
 	if string_manager:
-		string_manager.reset_to_initial([0, 4, 5, 9])
+		var init_arr: Array[int] = [0, 4, 5, 9]
+		string_manager.reset_to_initial(init_arr)
+		if ui_manager and ui_manager.has_method("set_initial_state"):
+			ui_manager.set_initial_state(init_arr)
 	if string_drawer:
 		string_drawer.update_line()
 	
@@ -71,6 +74,8 @@ func _ready() -> void:
 			layout_option.add_item("円形 (ステージ1)", 0)
 			layout_option.add_item("ボード (ステージ2)", 1)
 			layout_option.add_item("ピラミッド (ステージ3)", 2)
+			layout_option.add_item("10x10 ボード (フリー限定)", 3)
+
 			hbox.add_child(layout_option)
 			hbox.move_child(layout_option, 2)
 			layout_option.item_selected.connect(_on_layout_selected)
@@ -127,6 +132,23 @@ func _ready() -> void:
 				if ui_manager.has_method("toggle_share_menu"):
 					ui_manager.toggle_share_menu(free_mode_share_btn)
 			)
+			
+			# スタイル適用
+			var share_btn_normal = ThemeConfig.create_button_style(ThemeConfig.PRIMARY, 4.0, ThemeConfig.RADIUS_XL)
+			share_btn_normal.content_margin_left = 16
+			share_btn_normal.content_margin_right = 16
+			share_btn_normal.content_margin_top = 8
+			share_btn_normal.content_margin_bottom = 8
+			var share_btn_pressed = share_btn_normal.duplicate()
+			share_btn_pressed.content_margin_top += 4
+			share_btn_pressed.content_margin_bottom -= 4
+			ThemeConfig.apply_icon_button_theme(free_mode_share_btn, share_btn_normal, share_btn_pressed)
+			
+			var share_btn_hover = share_btn_normal.duplicate()
+			share_btn_hover.bg_color = ThemeConfig.PRIMARY_LIGHT
+			free_mode_share_btn.add_theme_stylebox_override("hover", share_btn_hover)
+			ThemeConfig.setup_button_animations(free_mode_share_btn)
+			
 			header.add_child(free_mode_share_btn)
 		
 	var loading_overlay = CanvasLayer.new()
@@ -167,18 +189,55 @@ func _on_layout_selected(index: int) -> void:
 	var positions = PinLayout.get_positions(index)
 	if string_drawer:
 		string_drawer.finger_positions.clear()
+		
+	var fingers_parent = get_node_or_null("Fingers")
+	if fingers_parent:
+		var current_fingers = get_tree().get_nodes_in_group("fingers")
+		if positions.size() > current_fingers.size():
+			for i in range(current_fingers.size(), positions.size()):
+				var area = Area2D.new()
+				area.name = "Finger" + str(i)
+				area.set_script(load("res://scripts/FingerNode.gd"))
+				var shape = CollisionShape2D.new()
+				var circle = CircleShape2D.new()
+				circle.radius = 40.0
+				shape.shape = circle
+				area.add_child(shape)
+				area.add_to_group("fingers")
+				area.set("finger_id", i)
+				fingers_parent.add_child(area)
+				area.finger_clicked.connect(_on_finger_clicked)
+				if string_drawer:
+					string_drawer.register_finger(i, Vector2.ZERO)
+
+	var target_base_scale = Vector2(0.25, 0.25) if index == 3 else Vector2(1.0, 1.0)
 	for node in get_tree().get_nodes_in_group("fingers"):
 		if node is FingerNode:
+			if node.has_method("set_base_scale"):
+				node.set_base_scale(target_base_scale)
 			var id = node.finger_id
 			if id >= 0 and id < positions.size():
+				node.show()
 				node.global_position = positions[id]
 				if string_drawer:
 					string_drawer.register_finger(id, positions[id])
+			else:
+				node.hide()
+				node.global_position = Vector2(-9999, -9999)
 	
 	if string_manager:
-		string_manager.reset_to_initial([0, 4, 5, 9])
+		string_manager.layout_id = index
+		var init_arr: Array[int]
+		if index == 3:
+			init_arr = [33, 36, 66, 63]
+		else:
+			init_arr = [0, 4, 5, 9]
+		string_manager.reset_to_initial(init_arr)
+		if ui_manager and ui_manager.has_method("set_initial_state"):
+			ui_manager.set_initial_state(init_arr)
 	if string_drawer:
 		string_drawer.update_line()
+
 
 func _on_segment_dropped_on_finger(segment_index: int, finger_id: int) -> void:
 	if string_drawer and string_drawer.is_input_locked: return
@@ -217,13 +276,18 @@ func _on_dialog_confirmed() -> void:
 		if ui_manager: ui_manager.show_message("なまえを いれてね！")
 		return
 		
-	if string_manager and string_manager.current_string == [0, 4, 5, 9]:
-		if ui_manager: ui_manager.show_message("かたちを つくってから とうこうしてね！")
-		return
-		
 	var layout_id = 0
 	if layout_option:
 		layout_id = layout_option.selected
+		
+	var current_init: Array[int]
+	if layout_id == 3:
+		current_init = [33, 36, 66, 63]
+	else:
+		current_init = [0, 4, 5, 9]
+	if string_manager and string_manager.current_string == current_init:
+		if ui_manager: ui_manager.show_message("かたちを つくってから とうこうしてね！")
+		return
 		
 	if ui_manager and ui_manager.share_button:
 		ui_manager.share_button.text = " 発行中... "
@@ -267,8 +331,45 @@ func _on_rules_btn_pressed() -> void:
 		multi_loop_check.text = "二重掛け（同じピンに何度も紐を掛ける）"
 		multi_loop_check.button_pressed = GameSave.active_rules.get("multi_loop", false)
 		multi_loop_check.toggled.connect(func(toggled_on):
-			GameSave.active_rules["multi_loop"] = toggled_on
-			GameSave.save_data()
+			if GameSave.active_rules.get("multi_loop", false) == toggled_on:
+				return
+				
+			var confirm_dialog = ConfirmationDialog.new()
+			confirm_dialog.title = "確認"
+			confirm_dialog.dialog_text = "ルールを変更すると、現在の盤面がリセットされます。\nよろしいですか？"
+			ThemeConfig.apply_dialog_theme(confirm_dialog)
+			add_child(confirm_dialog)
+			
+			confirm_dialog.confirmed.connect(func():
+				GameSave.active_rules["multi_loop"] = toggled_on
+				GameSave.save_data()
+				if string_manager:
+					var cur_layout = 0
+					var lo = null
+					if ui_manager:
+						lo = ui_manager.get_node_or_null("Control/FooterHBox/LayoutOption")
+						if not lo: lo = ui_manager.get_node_or_null("Control/HBoxContainer/LayoutOption")
+					if lo: cur_layout = lo.selected
+					var init_arr: Array[int]
+					if cur_layout == 3:
+						init_arr = [33, 36, 66, 63]
+					else:
+						init_arr = [0, 4, 5, 9]
+					string_manager.reset_to_initial(init_arr)
+					if ui_manager and ui_manager.has_method("set_initial_state"):
+						ui_manager.set_initial_state(init_arr)
+				if string_drawer:
+					string_drawer.update_line()
+				confirm_dialog.queue_free()
+			)
+			
+			confirm_dialog.canceled.connect(func():
+				multi_loop_check.set_pressed_no_signal(not toggled_on)
+				confirm_dialog.queue_free()
+			)
+			
+			confirm_dialog.exclusive = false
+			confirm_dialog.popup_centered(Vector2(450, 180))
 		)
 		vbox.add_child(multi_loop_check)
 		

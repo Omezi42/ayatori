@@ -254,7 +254,14 @@ func _get_canonical_key(state: Array[int]) -> String:
 
 # 両方向BFS探索による最短手生成
 func _search_bidirectional_bfs(start_state: Array[int], target_state: Array[int], target_key: String) -> Dictionary:
-	var max_depth_per_side = 6 # 最大計12手読み（全ステージ対応）
+	var is_advanced = false
+	if typeof(GameSave) == TYPE_OBJECT and GameSave.has_method("has_rule"):
+		is_advanced = GameSave.has_rule("multi_loop")
+		
+	var max_depth_per_side = 4 if is_advanced else 6 # 拡張時は分岐が多いため深度を下げる
+	var max_nodes = 3000 if is_advanced else 8000
+	var nodes_expanded = 0
+	
 	var start_key = _get_canonical_key(start_state)
 	
 	var queue_forward: Array[Dictionary] = []
@@ -280,7 +287,11 @@ func _search_bidirectional_bfs(start_state: Array[int], target_state: Array[int]
 		
 		if size_f <= size_b:
 			for _i in range(size_f):
+				if nodes_expanded >= max_nodes:
+					return best_found_move if not best_found_move.is_empty() else {}
+					
 				var curr = queue_forward.pop_front()
+				nodes_expanded += 1
 				var c_state: Array[int] = curr["state"]
 				var c_depth: int = curr["depth"]
 				var f_move: Dictionary = curr["first_move"]
@@ -307,7 +318,11 @@ func _search_bidirectional_bfs(start_state: Array[int], target_state: Array[int]
 							queue_forward.push_back({"state": nxt_state, "depth": c_depth + 1, "first_move": move_to_record})
 		else:
 			for _i in range(size_b):
+				if nodes_expanded >= max_nodes:
+					return best_found_move if not best_found_move.is_empty() else {}
+					
 				var curr = queue_backward.pop_front()
+				nodes_expanded += 1
 				var c_state: Array[int] = curr["state"]
 				var c_depth: int = curr["depth"]
 				
@@ -372,7 +387,8 @@ func _generate_next_moves(state: Array[int]) -> Array[Dictionary]:
 			is_advanced = GameSave.has_rule("multi_loop")
 	
 	# 掛ける操作 (hook)
-	for f in range(10):
+	var total_fingers = PinLayout.get_positions(layout_id).size()
+	for f in range(total_fingers):
 		if is_advanced or not state_set.has(f):
 			for i in range(state.size()):
 				# 拡張モード時は、隣接する同じ指に掛けるような無意味な操作を枝刈り
@@ -441,7 +457,14 @@ func _fallback_greedy_hint(current_norm: Array[int], target_norm: Array[int]) ->
 
 # 最短手数を計算して返す（双方向BFS）
 func calculate_optimal_moves_count(start_state: Array[int], target_state: Array[int]) -> int:
-	var max_depth_per_side = 6 # 最大計12手読み
+	var is_advanced = false
+	if typeof(GameSave) == TYPE_OBJECT and GameSave.has_method("has_rule"):
+		is_advanced = GameSave.has_rule("multi_loop")
+		
+	var max_depth_per_side = 4 if is_advanced else 6
+	var max_nodes = 3000 if is_advanced else 8000
+	var nodes_expanded = 0
+	
 	var start_key = _get_canonical_key(start_state)
 	var target_key = _get_canonical_key(target_state)
 	if start_key == target_key:
@@ -465,7 +488,10 @@ func calculate_optimal_moves_count(start_state: Array[int], target_state: Array[
 		
 		if size_f <= size_b:
 			for _i in range(size_f):
+				if nodes_expanded >= max_nodes:
+					return 999
 				var curr = queue_forward.pop_front()
+				nodes_expanded += 1
 				var c_state: Array[int] = curr[0]
 				var c_depth: int = curr[1]
 				
@@ -485,7 +511,10 @@ func calculate_optimal_moves_count(start_state: Array[int], target_state: Array[
 						queue_forward.push_back([nxt_state, c_depth + 1])
 		else:
 			for _i in range(size_b):
+				if nodes_expanded >= max_nodes:
+					return 999
 				var curr = queue_backward.pop_front()
+				nodes_expanded += 1
 				var c_state: Array[int] = curr[0]
 				var c_depth: int = curr[1]
 				

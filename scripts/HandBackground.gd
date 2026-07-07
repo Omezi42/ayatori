@@ -16,6 +16,9 @@ func _draw() -> void:
 		_draw_layout_board()
 	elif layout_id == 2:
 		_draw_layout_pyramid()
+	elif layout_id == 3:
+		_draw_layout_grid10x10()
+
 
 func _draw_layout_hands() -> void:
 	pass
@@ -51,6 +54,20 @@ func _draw_layout_pyramid() -> void:
 	# Draw center area
 	draw_circle(positions[9] + Vector2(0, 5), 60.0, shadow_color)
 	draw_circle(positions[9], 60.0, base_color)
+
+func _draw_layout_grid10x10() -> void:
+	var board_color = GameSave.get_current_board_color()
+	var shadow_color = Color(0, 0, 0, 0.05)
+	
+	var rect = Rect2(330, 50, 620, 620)
+	draw_rect(Rect2(rect.position + Vector2(0, 10), rect.size), shadow_color, true, 40.0)
+	draw_rect(rect, board_color, true, 40.0)
+	
+	var positions = PinLayout.get_positions(3)
+	for p in positions:
+		draw_circle(p + Vector2(0, 5), 10.0, shadow_color)
+		draw_circle(p, 10.0, Color("ffffff").blend(Color(0,0,0,0.1)))
+
 
 
 func _draw_hand_fingers(palm: Vector2, fingers: Array, color: Color, shadow: Color) -> void:
