@@ -58,38 +58,38 @@ func create_default_levels() -> void:
 	
 	if GameSave and GameSave.has_rule("multi_loop"):
 		level_configs = [
-			{"name": "ふたごやま", "target": [0, 4, 8, 0, 5, 9], "layout_id": 2, "optimal_moves": 3},
-			{"name": "ダブルトライアングル", "target": [5, 2, 8, 5, 4, 6], "layout_id": 0, "optimal_moves": 5},
-			{"name": "砂時計", "target": [0, 1, 2, 3, 0, 9, 8, 7], "layout_id": 0, "optimal_moves": 7},
-			{"name": "メガネ", "target": [2, 1, 0, 9, 2, 3, 5, 8], "layout_id": 0, "optimal_moves": 6},
-			{"name": "クリスタル", "target": [0, 2, 5, 8, 0, 3, 5, 7], "layout_id": 0, "optimal_moves": 6},
-			{"name": "クローバー", "target": [5, 4, 6, 5, 2, 8, 5, 0, 9], "layout_id": 0, "optimal_moves": 4},
-			{"name": "クラウン", "target": [1, 0, 9, 1, 2, 5, 8, 9, 5], "layout_id": 0, "optimal_moves": 6},
-			{"name": "かざぐるま", "target": [5, 1, 2, 5, 3, 4, 5, 6, 7, 5, 8, 9], "layout_id": 0, "optimal_moves": 8},
-			{"name": "メビウス", "target": [0, 1, 5, 8, 9, 0, 2, 5, 7, 9], "layout_id": 0, "optimal_moves": 8},
-			{"name": "タリスマン", "target": [5, 0, 2, 4, 5, 6, 8, 9, 1, 5, 3, 7], "layout_id": 0, "optimal_moves": 10},
-			{"name": "ギャラクシー", "target": [0, 4, 8, 2, 6, 0, 5, 9, 3, 7, 1, 5], "layout_id": 0, "optimal_moves": 11},
-			{"name": "スパイダー", "target": [0, 5, 1, 6, 2, 7, 3, 8, 4, 9, 0, 3, 6, 9], "layout_id": 0, "optimal_moves": 12}
+			{"name": "ふたごやま", "target": [0, 4, 8, 0, 5, 9], "layout_id": 2},
+			{"name": "ダブルトライアングル", "target": [5, 2, 8, 5, 4, 6], "layout_id": 0},
+			{"name": "砂時計", "target": [0, 1, 2, 3, 0, 9, 8, 7], "layout_id": 0},
+			{"name": "メガネ", "target": [2, 1, 0, 9, 2, 3, 5, 8], "layout_id": 0},
+			{"name": "クリスタル", "target": [0, 2, 5, 8, 0, 3, 5, 7], "layout_id": 0},
+			{"name": "クローバー", "target": [5, 4, 6, 5, 2, 8, 5, 0, 9], "layout_id": 0},
+			{"name": "クラウン", "target": [1, 0, 9, 1, 2, 5, 8, 9, 5], "layout_id": 0},
+			{"name": "かざぐるま", "target": [5, 1, 2, 5, 3, 4, 5, 6, 7, 5, 8, 9], "layout_id": 0},
+			{"name": "メビウス", "target": [0, 1, 5, 8, 9, 0, 2, 5, 7, 9], "layout_id": 0},
+			{"name": "タリスマン", "target": [5, 0, 2, 4, 5, 6, 8, 9, 1, 5, 3, 7], "layout_id": 0},
+			{"name": "ギャラクシー", "target": [0, 4, 8, 2, 6, 0, 5, 9, 3, 7, 1, 5], "layout_id": 0},
+			{"name": "スパイダー", "target": [0, 5, 1, 6, 2, 7, 3, 8, 4, 9, 0, 3, 6, 9], "layout_id": 0}
 		]
 	else:
 		level_configs = [
 			# === 入門 (円形レイアウト / 3-4要素) ===
-			{"name": "さんかく", "target": [1, 5, 8], "layout_id": 0, "optimal_moves": 5},
-			{"name": "リボン", "target": [0, 4, 6, 2], "layout_id": 0, "optimal_moves": 4},
-			{"name": "ダイヤ", "target": [0, 2, 5, 8], "layout_id": 0, "optimal_moves": 4},
+			{"name": "さんかく", "target": [1, 5, 8], "layout_id": 0},
+			{"name": "リボン", "target": [0, 4, 6, 2], "layout_id": 0},
+			{"name": "ダイヤ", "target": [0, 2, 5, 8], "layout_id": 0},
 			# === 初級 (円形レイアウト / 4-5要素) ===
-			{"name": "いなずま", "target": [1, 7, 3, 5], "layout_id": 0, "optimal_moves": 6},
-			{"name": "ロケット", "target": [0, 3, 6, 8], "layout_id": 0, "optimal_moves": 6},
+			{"name": "いなずま", "target": [1, 7, 3, 5], "layout_id": 0},
+			{"name": "ロケット", "target": [0, 3, 6, 8], "layout_id": 0},
 			# === 中級 (円形レイアウト / 5要素) ===
-			{"name": "ちょうちょ", "target": [1, 5, 9, 2, 8], "layout_id": 0, "optimal_moves": 5},
-			{"name": "ほし", "target": [0, 6, 2, 8, 4], "layout_id": 0, "optimal_moves": 5},
-			{"name": "おうち", "target": [0, 2, 3, 7, 8], "layout_id": 0, "optimal_moves": 7},
+			{"name": "ちょうちょ", "target": [1, 5, 9, 2, 8], "layout_id": 0},
+			{"name": "ほし", "target": [0, 6, 2, 8, 4], "layout_id": 0},
+			{"name": "おうち", "target": [0, 2, 3, 7, 8], "layout_id": 0},
 			# === 上級 (円形レイアウト / 多要素) ===
-			{"name": "フラワー", "target": [1, 4, 6, 9, 2, 7, 5, 8, 3, 0], "layout_id": 0, "optimal_moves": 8},
+			{"name": "フラワー", "target": [1, 4, 6, 9, 2, 7, 5, 8, 3, 0], "layout_id": 0},
 			# === ピラミッドレイアウト ===
-			{"name": "ピラミッド-1", "target": [3, 9, 0, 1], "layout_id": 2, "optimal_moves": 4},
-			{"name": "ピラミッド-2", "target": [0, 3, 5, 6, 8], "layout_id": 2, "optimal_moves": 5},
-			{"name": "ピラミッド-3", "target": [8, 4, 7, 5, 3, 0, 9, 2, 1], "layout_id": 2, "optimal_moves": 7}
+			{"name": "ピラミッド-1", "target": [3, 9, 0, 1], "layout_id": 2},
+			{"name": "ピラミッド-2", "target": [0, 3, 5, 6, 8], "layout_id": 2},
+			{"name": "ピラミッド-3", "target": [8, 4, 7, 5, 3, 0, 9, 2, 1], "layout_id": 2}
 		]
 	
 	# 最短手数の再計算と難易度スコアリング

@@ -74,6 +74,13 @@ size_flags_horizontal = 4
 theme_override_font_sizes/font_size = 48
 text = "スタート"
 
+[node name="DailyButton" type="Button" parent="ButtonContainer"]
+custom_minimum_size = Vector2(380, 72)
+layout_mode = 2
+size_flags_horizontal = 4
+theme_override_font_sizes/font_size = 36
+text = "今日のお題"
+
 [node name="SubMenu" type="HBoxContainer" parent="ButtonContainer"]
 layout_mode = 2
 size_flags_horizontal = 4

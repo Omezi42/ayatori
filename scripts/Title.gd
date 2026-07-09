@@ -59,8 +59,25 @@ func _ready() -> void:
 		shop_btn.icon = load("res://assets/ic_shop.svg")
 		shop_btn.add_theme_constant_override("icon_max_width", 24)
 	
+	# 今日のお題ボタン（メインメニュー配置）
+	var daily_btn = $ButtonContainer/DailyButton
+	var daily_normal = ThemeConfig.create_button_style(ThemeConfig.ACCENT, 6)
+	daily_normal.content_margin_top = 16
+	daily_normal.content_margin_bottom = 16
+	daily_normal.content_margin_left = 32
+	daily_normal.content_margin_right = 32
+	var daily_pressed = ThemeConfig.create_pressed_style(ThemeConfig.ACCENT)
+	daily_pressed.content_margin_left = 32
+	daily_pressed.content_margin_right = 32
+	ThemeConfig.apply_button_theme(daily_btn, daily_normal, daily_pressed)
+	daily_btn.add_theme_font_size_override("font_size", 32)
+	daily_btn.icon = load("res://assets/ic_calendar.svg")
+	daily_btn.add_theme_constant_override("icon_max_width", 28)
+	daily_btn.add_theme_color_override("font_outline_color", Color(0.3, 0.6, 0.7, 0.8))
+	daily_btn.pressed.connect(_on_daily_pressed)
+	
 	# 4. ボタンアニメーション設定
-	for btn in [start_btn, create_btn, search_btn, shop_btn]:
+	for btn in [start_btn, daily_btn, create_btn, search_btn, shop_btn]:
 		if btn:
 			ThemeConfig.setup_button_animations(btn)
 	
@@ -170,27 +187,6 @@ func _setup_settings_corner() -> void:
 	
 	var sep1 = HSeparator.new()
 	set_vbox.add_child(sep1)
-
-	# 今日のお題（設定内に統合・SVGアイコン使用）
-	var daily_btn = Button.new()
-	daily_btn.text = " 今日のお題"
-	daily_btn.icon = load("res://assets/ic_calendar.svg")
-	daily_btn.add_theme_constant_override("icon_max_width", 24)
-	daily_btn.add_theme_font_size_override("font_size", ThemeConfig.FONT_BODY)
-	daily_btn.custom_minimum_size = ThemeConfig.MIN_TAP_SIZE
-	var daily_normal = ThemeConfig.create_button_style(ThemeConfig.ACCENT, 4)
-	daily_normal.content_margin_left = 16
-	daily_normal.content_margin_right = 16
-	daily_normal.content_margin_top = 8
-	daily_normal.content_margin_bottom = 8
-	var daily_pressed = daily_normal.duplicate()
-	daily_pressed.content_margin_top += 4
-	daily_pressed.content_margin_bottom -= 4
-	ThemeConfig.apply_button_theme(daily_btn, daily_normal, daily_pressed)
-	daily_btn.add_theme_color_override("font_outline_color", Color(0.3, 0.6, 0.7, 0.8))
-	daily_btn.pressed.connect(_on_daily_pressed)
-	ThemeConfig.setup_button_animations(daily_btn)
-	set_vbox.add_child(daily_btn)
 	
 
 	
@@ -265,6 +261,19 @@ func apply_theme_colors() -> void:
 		var btn = $ButtonContainer/SubMenu.get_node_or_null(btn_name) as Button
 		if btn:
 			ThemeConfig.apply_button_theme(btn, secondary_normal, secondary_pressed)
+			
+	var daily_btn = $ButtonContainer.get_node_or_null("DailyButton") as Button
+	if daily_btn:
+		var daily_normal = ThemeConfig.create_button_style(ThemeConfig.ACCENT, 6)
+		daily_normal.content_margin_top = 16
+		daily_normal.content_margin_bottom = 16
+		daily_normal.content_margin_left = 32
+		daily_normal.content_margin_right = 32
+		var daily_pressed = ThemeConfig.create_pressed_style(ThemeConfig.ACCENT)
+		daily_pressed.content_margin_left = 32
+		daily_pressed.content_margin_right = 32
+		ThemeConfig.apply_button_theme(daily_btn, daily_normal, daily_pressed)
+		daily_btn.add_theme_color_override("font_outline_color", Color(0.3, 0.6, 0.7, 0.8))
 			
 	if settings_btn:
 		var btn_normal = ThemeConfig.create_button_style(ThemeConfig.PRIMARY, 4, ThemeConfig.RADIUS_XL)
