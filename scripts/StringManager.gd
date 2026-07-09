@@ -10,6 +10,9 @@ var optimal_moves_cache: int = -1
 var _hint_cache: Dictionary = {}
 var _hint_cache_mutex: Mutex = Mutex.new()
 var layout_id: int = 0
+var _sub_edges_cache: Dictionary = {}
+var _cached_target_string: Array[int] = []
+var _cached_target_edges: Array = []
 
 signal string_changed
 
@@ -97,8 +100,14 @@ func get_edge_set(seq: Array[int]) -> Array:
 	return keys
 
 func _get_sub_edges(u: int, v: int, positions: Array[Vector2]) -> Array[String]:
+	var cache_key = str(layout_id) + "_" + str(min(u, v)) + "-" + str(max(u, v))
+	if _sub_edges_cache.has(cache_key):
+		return _sub_edges_cache[cache_key]
+
 	if positions.is_empty() or u < 0 or v < 0 or u >= positions.size() or v >= positions.size():
-		return [str(min(u, v)) + "-" + str(max(u, v))]
+		var res: Array[String] = [str(min(u, v)) + "-" + str(max(u, v))]
+		_sub_edges_cache[cache_key] = res
+		return res
 		
 	var pu = positions[u]
 	var pv = positions[v]
@@ -128,6 +137,7 @@ func _get_sub_edges(u: int, v: int, positions: Array[Vector2]) -> Array[String]:
 		if n1 != n2:
 			sub_edges.append(str(min(n1, n2)) + "-" + str(max(n1, n2)))
 			
+	_sub_edges_cache[cache_key] = sub_edges
 	return sub_edges
 
 func is_state_matching_target(state: Array[int], target: Array[int]) -> bool:
@@ -135,7 +145,13 @@ func is_state_matching_target(state: Array[int], target: Array[int]) -> bool:
 		return false
 	
 	var edges_s = get_edge_set(state)
-	var edges_t = get_edge_set(target)
+	var edges_t: Array = []
+	if target == _cached_target_string:
+		edges_t = _cached_target_edges
+	else:
+		edges_t = get_edge_set(target)
+		_cached_target_string = target.duplicate()
+		_cached_target_edges = edges_t
 	
 	if edges_s.size() == 0 or edges_t.size() == 0:
 		return false
@@ -188,18 +204,9 @@ func get_quick_hint(current: Array[int], target: Array[int]) -> Dictionary:
 	if has_cached:
 		return cached_val
 		
-	# 1手先読みチェック (1手でクリアできるなら即座に返す)
-	var next_moves = _generate_next_moves(current_norm)
-	for move_data in next_moves:
-		if _get_canonical_key(move_data["next_state"]) == target_key:
-			_hint_cache_mutex.lock()
-			_hint_cache[cache_key] = move_data["move"]
-			_hint_cache_mutex.unlock()
-			return move_data["move"]
-			
 	return {"_need_deep_search": true}
 
-func get_heuristic_hint(current: Array[int], target: Array[int]) -> Dictionary:
+func get_heuristic_hint_async(current: Array[int], target: Array[int]) -> Dictionary:
 	if current.is_empty() or target.is_empty() or is_state_matching_target(current, target):
 		return {}
 		
@@ -233,7 +240,7 @@ func get_heuristic_hint(current: Array[int], target: Array[int]) -> Dictionary:
 			
 	# 2. 両方向BFS (Bidirectional BFS) による最短手順の探索
 	# フロンティア最小展開 + ヒューリスティック下界枝刈りで計算量を極限まで削減
-	var best_move = _search_bidirectional_bfs(current_norm, target_norm, target_key)
+	var best_move = await _search_bidirectional_bfs_async(current_norm, target_norm, target_key)
 	if not best_move.is_empty():
 		_hint_cache_mutex.lock()
 		_hint_cache[cache_key] = best_move
@@ -253,14 +260,17 @@ func _get_canonical_key(state: Array[int]) -> String:
 	return ",".join(edges)
 
 # 両方向BFS探索による最短手生成
-func _search_bidirectional_bfs(start_state: Array[int], target_state: Array[int], target_key: String) -> Dictionary:
+func _search_bidirectional_bfs_async(start_state: Array[int], target_state: Array[int], target_key: String) -> Dictionary:
 	var is_advanced = false
-	if typeof(GameSave) == TYPE_OBJECT and GameSave.has_method("has_rule"):
-		is_advanced = GameSave.has_rule("multi_loop")
+	if Engine.has_singleton("GameSave") and Engine.get_singleton("GameSave").has_method("has_rule"):
+		is_advanced = Engine.get_singleton("GameSave").has_rule("multi_loop")
 		
-	var max_depth_per_side = 4 if is_advanced else 6 # 拡張時は分岐が多いため深度を下げる
-	var max_nodes = 3000 if is_advanced else 8000
+	var max_depth_per_side = 8 if is_advanced else 8
+	var max_nodes = 50000
 	var nodes_expanded = 0
+	var start_time_msec = Time.get_ticks_msec()
+	var max_time_msec = 5000 if OS.has_feature("web") else 5000
+	var frame_start_msec = Time.get_ticks_msec()
 	
 	var start_key = _get_canonical_key(start_state)
 	
@@ -287,8 +297,11 @@ func _search_bidirectional_bfs(start_state: Array[int], target_state: Array[int]
 		
 		if size_f <= size_b:
 			for _i in range(size_f):
-				if nodes_expanded >= max_nodes:
+				if nodes_expanded >= max_nodes or (Time.get_ticks_msec() - start_time_msec > max_time_msec):
 					return best_found_move if not best_found_move.is_empty() else {}
+				if nodes_expanded % 100 == 0 and Time.get_ticks_msec() - frame_start_msec > 3:
+					await Engine.get_main_loop().process_frame
+					frame_start_msec = Time.get_ticks_msec()
 					
 				var curr = queue_forward.pop_front()
 				nodes_expanded += 1
@@ -318,8 +331,11 @@ func _search_bidirectional_bfs(start_state: Array[int], target_state: Array[int]
 							queue_forward.push_back({"state": nxt_state, "depth": c_depth + 1, "first_move": move_to_record})
 		else:
 			for _i in range(size_b):
-				if nodes_expanded >= max_nodes:
+				if nodes_expanded >= max_nodes or (Time.get_ticks_msec() - start_time_msec > max_time_msec):
 					return best_found_move if not best_found_move.is_empty() else {}
+				if nodes_expanded % 100 == 0 and Time.get_ticks_msec() - frame_start_msec > 3:
+					await Engine.get_main_loop().process_frame
+					frame_start_msec = Time.get_ticks_msec()
 					
 				var curr = queue_backward.pop_front()
 				nodes_expanded += 1
@@ -373,18 +389,8 @@ func _generate_next_moves(state: Array[int]) -> Array[Dictionary]:
 	for x in state: state_set[x] = true
 	
 	var is_advanced = false
-	if Engine.has_singleton("GameSave"):
-		var gs = Engine.get_singleton("GameSave")
-		if gs and gs.has_method("has_rule"):
-			is_advanced = gs.has_rule("multi_loop")
-	elif is_inside_tree() and has_node("/root/GameSave"):
-		var gs = get_node("/root/GameSave")
-		if gs and gs.has_method("has_rule"):
-			is_advanced = gs.has_rule("multi_loop")
-	# Fallback if GameSave is autoloaded
-	elif typeof(GameSave) == TYPE_OBJECT:
-		if GameSave.has_method("has_rule"):
-			is_advanced = GameSave.has_rule("multi_loop")
+	if Engine.has_singleton("GameSave") and Engine.get_singleton("GameSave").has_method("has_rule"):
+		is_advanced = Engine.get_singleton("GameSave").has_rule("multi_loop")
 	
 	# 掛ける操作 (hook)
 	var total_fingers = PinLayout.get_positions(layout_id).size()
@@ -420,8 +426,8 @@ func _fallback_greedy_hint(current_norm: Array[int], target_norm: Array[int]) ->
 	for f in target_norm: target_set[f] = true
 	
 	var is_advanced = false
-	if typeof(GameSave) == TYPE_OBJECT and GameSave.has_method("has_rule"):
-		is_advanced = GameSave.has_rule("multi_loop")
+	if Engine.has_singleton("GameSave") and Engine.get_singleton("GameSave").has_method("has_rule"):
+		is_advanced = Engine.get_singleton("GameSave").has_rule("multi_loop")
 	
 	# 1. 目標にない指があれば外す (非拡張時のみ、または拡張時でも不要な指なら)
 	if current_norm.size() > 3:
@@ -458,12 +464,14 @@ func _fallback_greedy_hint(current_norm: Array[int], target_norm: Array[int]) ->
 # 最短手数を計算して返す（双方向BFS）
 func calculate_optimal_moves_count(start_state: Array[int], target_state: Array[int]) -> int:
 	var is_advanced = false
-	if typeof(GameSave) == TYPE_OBJECT and GameSave.has_method("has_rule"):
-		is_advanced = GameSave.has_rule("multi_loop")
+	if Engine.has_singleton("GameSave") and Engine.get_singleton("GameSave").has_method("has_rule"):
+		is_advanced = Engine.get_singleton("GameSave").has_rule("multi_loop")
 		
-	var max_depth_per_side = 4 if is_advanced else 6
-	var max_nodes = 3000 if is_advanced else 8000
+	var max_depth_per_side = 8 if is_advanced else 8
+	var max_nodes = 50000
 	var nodes_expanded = 0
+	var start_time_msec = Time.get_ticks_msec()
+	var max_time_msec = 150 if OS.has_feature("web") else 2000
 	
 	var start_key = _get_canonical_key(start_state)
 	var target_key = _get_canonical_key(target_state)
@@ -488,7 +496,7 @@ func calculate_optimal_moves_count(start_state: Array[int], target_state: Array[
 		
 		if size_f <= size_b:
 			for _i in range(size_f):
-				if nodes_expanded >= max_nodes:
+				if nodes_expanded >= max_nodes or (nodes_expanded % 100 == 0 and Time.get_ticks_msec() - start_time_msec > max_time_msec):
 					return 999
 				var curr = queue_forward.pop_front()
 				nodes_expanded += 1
@@ -511,7 +519,7 @@ func calculate_optimal_moves_count(start_state: Array[int], target_state: Array[
 						queue_forward.push_back([nxt_state, c_depth + 1])
 		else:
 			for _i in range(size_b):
-				if nodes_expanded >= max_nodes:
+				if nodes_expanded >= max_nodes or (nodes_expanded % 100 == 0 and Time.get_ticks_msec() - start_time_msec > max_time_msec):
 					return 999
 				var curr = queue_backward.pop_front()
 				nodes_expanded += 1

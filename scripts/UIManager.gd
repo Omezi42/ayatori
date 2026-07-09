@@ -664,13 +664,26 @@ func set_goal_texture(texture: Texture2D) -> void:
 func set_goal_layout(layout_id: int) -> void:
 	if ui_target_drawer:
 		ui_target_drawer.set_layout(layout_id)
+		_update_target_drawer_scale(layout_id)
 
 func set_goal_sequence(sequence: Array[int], layout_id: int = 0) -> void:
 	if ui_target_drawer:
 		ui_target_drawer.set_layout(layout_id)
 		ui_target_drawer.set_target(sequence)
+		_update_target_drawer_scale(layout_id)
 		if goal_texture and not goal_texture.visible:
 			_animate_goal_bounce()
+
+func _update_target_drawer_scale(layout_id: int) -> void:
+	if not ui_target_drawer:
+		return
+	var s = 0.24
+	if layout_id == 3:
+		s = 0.18 # 10x10 requires smaller scale
+	elif layout_id == 2:
+		s = 0.22 # Pyramid width requires slightly smaller scale
+	ui_target_drawer.scale = Vector2(s, s)
+	ui_target_drawer.position = Vector2(80 - (640 * s), 60 - (360 * s))
 
 func set_initial_state(state: Array[int]) -> void:
 	_current_initial_state = state.duplicate()
@@ -789,6 +802,14 @@ func show_message(msg: String) -> void:
 		tween.chain().tween_interval(1.5)
 		tween.chain().tween_property(message_label, "scale", Vector2(1.1, 1.1), 0.4).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN)
 		tween.parallel().tween_property(message_label, "modulate:a", 0.0, 0.4).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN)
+
+func set_hint_enabled(enabled: bool, disabled_text: String = "ヒント") -> void:
+	if hint_button:
+		hint_button.disabled = not enabled
+		if enabled:
+			hint_button.text = "ヒント"
+		else:
+			hint_button.text = disabled_text
 
 func set_hint_thinking(is_thinking: bool) -> void:
 	_is_hint_thinking = is_thinking

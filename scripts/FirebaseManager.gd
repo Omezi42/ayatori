@@ -100,7 +100,7 @@ func load_level(code: String):
 	if error != OK:
 		emit_signal("load_failed", "リクエストの送信に失敗しました")
 
-func _on_save_request_completed(result: int, response_code: int, headers: PackedStringArray, body: PackedByteArray):
+func _on_save_request_completed(_result: int, response_code: int, _headers: PackedStringArray, body: PackedByteArray):
 	if response_code == 200:
 		var json = JSON.parse_string(body.get_string_from_utf8())
 		if json and json.has("name"):
@@ -115,7 +115,7 @@ func _on_save_request_completed(result: int, response_code: int, headers: Packed
 		emit_signal("save_failed", "サーバーエラー: " + str(response_code))
 		network_request_completed.emit(false, "サーバーエラー: " + str(response_code))
 
-func _on_load_request_completed(result: int, response_code: int, headers: PackedStringArray, body: PackedByteArray):
+func _on_load_request_completed(_result: int, response_code: int, _headers: PackedStringArray, body: PackedByteArray):
 	if response_code == 200:
 		var json = JSON.parse_string(body.get_string_from_utf8())
 		if json and json.has("fields") and json["fields"].has("target_sequence"):
@@ -176,7 +176,7 @@ func fetch_levels(sort_type: String = "newest", search_query: String = ""):
 	if error != OK:
 		emit_signal("fetch_failed", "リクエストの送信に失敗しました")
 
-func _on_fetch_request_completed(result: int, response_code: int, headers: PackedStringArray, body: PackedByteArray):
+func _on_fetch_request_completed(_result: int, response_code: int, _headers: PackedStringArray, body: PackedByteArray):
 	if response_code == 200:
 		var json_array = JSON.parse_string(body.get_string_from_utf8())
 		if json_array is Array:

@@ -26,7 +26,10 @@ const PIN_ITEMS = [
 	{"id": 2, "name": "ミントエメラルド", "price": 30, "color": Color("#98FB98"), "shine": Color(1, 1, 1, 0.7)},
 	{"id": 3, "name": "サンシャインゴールド", "price": 50, "color": Color("#FFD700"), "shine": Color("#FFF8DC")},
 	{"id": 4, "name": "ミスティックアメジスト", "price": 80, "color": Color("#E0B0FF"), "shine": Color(1, 1, 1, 0.8)},
-	{"id": 5, "name": "スターライトホワイト", "price": 120, "color": Color("#FFFFFF"), "shine": Color("#E6E6FA")}
+	{"id": 5, "name": "スターライトホワイト", "price": 120, "color": Color("#FFFFFF"), "shine": Color("#E6E6FA")},
+	{"id": 6, "name": "ゲーミングちくわ", "price": 150, "color": Color("#D2B48C"), "shine": Color("#FF00FF")},
+	{"id": 7, "name": "暗黒物質(ダークマター)", "price": 200, "color": Color("#111111"), "shine": Color("#FF0000")},
+	{"id": 8, "name": "ぷにぷに肉球", "price": 250, "color": Color("#FF9999"), "shine": Color("#FFCCCC")}
 ]
 
 const BG_ITEMS = [
@@ -34,7 +37,10 @@ const BG_ITEMS = [
 	{"id": 1, "name": "サクラガーデン", "price": 15, "bg_color": Color("#FFF0F5"), "board_color": Color("#F5D6E0")},
 	{"id": 2, "name": "クリアスカイ", "price": 30, "bg_color": Color("#F0F8FF"), "board_color": Color("#D6EAF8")},
 	{"id": 3, "name": "フォレストテラス", "price": 50, "bg_color": Color("#F0F7F4"), "board_color": Color("#D4E6CE")},
-	{"id": 4, "name": "トワイライトネオン", "price": 80, "bg_color": Color("#2B2D42"), "board_color": Color("#3D405B")}
+	{"id": 4, "name": "トワイライトネオン", "price": 80, "bg_color": Color("#2B2D42"), "board_color": Color("#3D405B")},
+	{"id": 5, "name": "お引越しの段ボール", "price": 150, "bg_color": Color("#C19A6B"), "board_color": Color("#D2B48C")},
+	{"id": 6, "name": "致命的なエラー(青)", "price": 200, "bg_color": Color("#0000AA"), "board_color": Color("#0000AA")},
+	{"id": 7, "name": "電脳世界(緑黒)", "price": 250, "bg_color": Color("#000000"), "board_color": Color("#003300")}
 ]
 
 const STRING_ITEMS = [
@@ -42,7 +48,10 @@ const STRING_ITEMS = [
 	{"id": 1, "name": "サンシャインイエロー", "price": 20, "color": Color("#FFD700"), "tense_color": Color("#FFE866"), "target_color": Color("#FFD700")},
 	{"id": 2, "name": "オーシャンブルー", "price": 40, "color": Color("#00B4D8"), "tense_color": Color("#48CAE4"), "target_color": Color("#00B4D8")},
 	{"id": 3, "name": "エメラルドグリーン", "price": 60, "color": Color("#2EC4B6"), "tense_color": Color("#68D8CD"), "target_color": Color("#2EC4B6")},
-	{"id": 4, "name": "マジカルパープル", "price": 100, "color": Color("#9D4EDD"), "tense_color": Color("#C77DFF"), "target_color": Color("#9D4EDD")}
+	{"id": 4, "name": "マジカルパープル", "price": 100, "color": Color("#9D4EDD"), "tense_color": Color("#C77DFF"), "target_color": Color("#9D4EDD")},
+	{"id": 5, "name": "コシのある讃岐うどん", "price": 150, "color": Color("#FFFFF0"), "tense_color": Color("#FFFACD"), "target_color": Color("#FFFFF0")},
+	{"id": 6, "name": "運命の赤い糸", "price": 200, "color": Color("#DC143C"), "tense_color": Color("#FF0000"), "target_color": Color("#DC143C")},
+	{"id": 7, "name": "痛そうな有刺鉄線", "price": 250, "color": Color("#696969"), "tense_color": Color("#808080"), "target_color": Color("#696969")}
 ]
 
 const SAVE_PATH = "user://ayatori_save.json"

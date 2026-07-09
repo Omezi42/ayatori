@@ -9,6 +9,7 @@ var title_input: LineEdit
 
 func _ready() -> void:
 	if GameSave:
+		GameSave.is_playing_advanced_level = false
 		GameSave.customization_changed.connect(_update_bg_color)
 	_update_bg_color()
 	

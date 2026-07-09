@@ -2,9 +2,12 @@ extends SceneTree
 
 func _init():
 	var sm = preload("res://scripts/StringManager.gd").new()
+	var dummy_script = GDScript.new()
+	dummy_script.source_code = "extends Node\nvar active_rules = {}\nfunc has_rule(r): return active_rules.has(r) and active_rules[r]"
+	dummy_script.reload()
 	var GameSaveMock = ClassDB.instantiate("Node")
-	GameSaveMock.set_script(preload("res://scripts/GameSave.gd"))
-	var root = root
+	GameSaveMock.set_script(dummy_script)
+
 	
 	var advanced_levels = [
 		{"name": "ふたごやま", "target": [0, 4, 8, 0, 5, 9], "layout_id": 2},

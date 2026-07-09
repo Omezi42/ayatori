@@ -15,6 +15,7 @@ var guide_lines: TargetDrawer
 
 var _is_calculating_hint: bool = false
 var _hint_calc_string: Array[int] = []
+var _is_ugc_level: bool = false
 
 var _current_optimal_moves: int = 0
 var _current_stars: int = 0
@@ -64,13 +65,15 @@ func _ready() -> void:
 	
 	guide_lines = TargetDrawer.new()
 	guide_lines.modulate.a = 0.3
+	guide_lines.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	
-	if bg_rect == self:
-		add_child(guide_drawer)
-		add_child(guide_lines)
-	else:
-		bg_rect.add_child(guide_drawer)
-		bg_rect.add_child(guide_lines)
+	add_child(guide_drawer)
+	add_child(guide_lines)
+	var hand_bg = get_node_or_null("HandBackground")
+	if hand_bg:
+		move_child(guide_drawer, hand_bg.get_index() + 1)
+		move_child(guide_lines, hand_bg.get_index() + 2)
+
 	
 	if GameSave:
 		GameSave.customization_changed.connect(_on_customization_changed)
@@ -175,6 +178,13 @@ func _on_level_changed(level_idx: int, level_data: LevelData) -> void:
 	if ui_manager and ui_manager.has_method("set_hint_thinking"):
 		ui_manager.set_hint_thinking(false)
 		
+	_is_ugc_level = (level_idx < 0)
+	if ui_manager and ui_manager.has_method("set_hint_enabled"):
+		if _is_ugc_level:
+			ui_manager.set_hint_enabled(false, "このステージでは使えません")
+		else:
+			ui_manager.set_hint_enabled(true)
+		
 	if not level_data:
 		push_warning("MainController: _on_level_changed received null level_data")
 		return
@@ -233,6 +243,13 @@ func _on_level_changed(level_idx: int, level_data: LevelData) -> void:
 	if bg_rect and bg_rect is Node2D:
 		bg_rect.scale = Vector2(pin_scale, pin_scale)
 		bg_rect.position = Vector2(
+			screen_size.x / 2.0 - pin_center.x * pin_scale,
+			play_area_center_y - pin_center.y * pin_scale
+		)
+		
+	if guide_lines:
+		guide_lines.scale = Vector2(pin_scale, pin_scale)
+		guide_lines.position = Vector2(
 			screen_size.x / 2.0 - pin_center.x * pin_scale,
 			play_area_center_y - pin_center.y * pin_scale
 		)
@@ -434,6 +451,7 @@ func _handle_game_clear() -> void:
 var _is_waiting_for_hint: bool = false
 
 func _trigger_background_hint_calculation() -> void:
+	if _is_ugc_level: return
 	if _is_calculating_hint: return
 	if not string_manager or string_manager.current_string.is_empty() or string_manager.target_string.is_empty(): return
 	
@@ -442,9 +460,13 @@ func _trigger_background_hint_calculation() -> void:
 	
 	_is_calculating_hint = true
 	_hint_calc_string = string_manager.current_string.duplicate()
-	WorkerThreadPool.add_task(_calculate_hint_async.bind(string_manager.current_string.duplicate(), string_manager.target_string.duplicate()))
+	_calculate_hint_async_coroutine(string_manager.current_string.duplicate(), string_manager.target_string.duplicate())
 
 func _show_hint() -> void:
+	if _is_ugc_level:
+		if ui_manager:
+			ui_manager.show_message("投稿ステージではヒントを使えません")
+		return
 	if current_state != GameState.PLAYING: return
 	if not string_manager or not string_drawer: return
 	if string_manager.current_string.is_empty() or string_manager.target_string.is_empty(): return
@@ -467,11 +489,11 @@ func _show_hint() -> void:
 	_hint_calc_string = string_manager.current_string.duplicate()
 	if ui_manager and ui_manager.has_method("set_hint_thinking"):
 		ui_manager.set_hint_thinking(true)
-	WorkerThreadPool.add_task(_calculate_hint_async.bind(string_manager.current_string.duplicate(), string_manager.target_string.duplicate()))
+	_calculate_hint_async_coroutine(string_manager.current_string.duplicate(), string_manager.target_string.duplicate())
 
-func _calculate_hint_async(current_copy: Array[int], target_copy: Array[int]) -> void:
-	var hint = string_manager.get_heuristic_hint(current_copy, target_copy)
-	call_deferred("_on_hint_calculated", hint)
+func _calculate_hint_async_coroutine(current_copy: Array[int], target_copy: Array[int]) -> void:
+	var hint = await string_manager.get_heuristic_hint_async(current_copy, target_copy)
+	_on_hint_calculated(hint)
 
 func _on_hint_calculated(hint: Dictionary) -> void:
 	_is_calculating_hint = false
@@ -538,3 +560,8 @@ func _update_bg_color() -> void:
 	var hand_bg = get_node_or_null("HandBackground")
 	if hand_bg and hand_bg.has_method("queue_redraw"):
 		hand_bg.queue_redraw()
+
+func _exit_tree() -> void:
+	if GameSave:
+		GameSave.is_playing_advanced_level = false
+		GameSave.playing_active_rules.clear()

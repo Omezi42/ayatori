@@ -5,12 +5,12 @@ var settings_panel: PanelContainer
 
 func _ready() -> void:
 	# 1. 全体テーマ（フォントアウトラインの統一）
-	var theme = Theme.new()
-	theme.set_color("font_outline_color", "Label", ThemeConfig.TEXT_DARK)
-	theme.set_color("font_outline_color", "Button", ThemeConfig.TEXT_DARK)
-	theme.set_constant("outline_size", "Label", 12)
-	theme.set_constant("outline_size", "Button", 8)
-	self.theme = theme
+	var custom_theme = Theme.new()
+	custom_theme.set_color("font_outline_color", "Label", ThemeConfig.TEXT_DARK)
+	custom_theme.set_color("font_outline_color", "Button", ThemeConfig.TEXT_DARK)
+	custom_theme.set_constant("outline_size", "Label", 12)
+	custom_theme.set_constant("outline_size", "Button", 8)
+	self.theme = custom_theme
 
 	# 2. プライマリボタン（スタート）のスタイル
 	var primary_normal = ThemeConfig.create_button_style(ThemeConfig.PRIMARY, 6)
@@ -211,12 +211,12 @@ func _on_create_pressed() -> void:
 	_transition_to_scene("res://scenes/LevelEditor.tscn")
 
 func _transition_to_scene(path: String) -> void:
-	var tr = get_node_or_null("TransitionRect")
-	if tr:
-		tr.show()
-		tr.modulate.a = 0.0
+	var t_rect = get_node_or_null("TransitionRect")
+	if t_rect:
+		t_rect.show()
+		t_rect.modulate.a = 0.0
 		var tw = create_tween()
-		tw.tween_property(tr, "modulate:a", 1.0, 0.4)
+		tw.tween_property(t_rect, "modulate:a", 1.0, 0.4)
 		tw.tween_callback(func(): get_tree().change_scene_to_file(path))
 	else:
 		get_tree().change_scene_to_file(path)
@@ -320,7 +320,7 @@ func _on_daily_pressed() -> void:
 	var attempts = 0
 	while attempts < 500:
 		attempts += 1
-		var size = rng.randi_range(4, 7)
+		var rand_size = rng.randi_range(4, 7)
 		var fingers = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
 		# シャッフル
 		for i in range(fingers.size() - 1, 0, -1):
@@ -330,8 +330,21 @@ func _on_daily_pressed() -> void:
 			fingers[j] = tmp
 			
 		var candidate: Array[int] = []
-		for i in range(size):
+		for i in range(rand_size):
 			candidate.append(fingers[i])
+			
+		# 二重掛け（同じピンへの複数回掛け）をある確率で追加
+		if rng.randf() < 0.6:
+			var double_count = rng.randi_range(1, 2)
+			for d in range(double_count):
+				if candidate.size() >= 8:
+					break
+				var dup_val = candidate[rng.randi_range(0, candidate.size() - 1)]
+				var insert_idx = rng.randi_range(0, candidate.size())
+				var prev_idx = (insert_idx - 1 + candidate.size()) % candidate.size()
+				var next_idx = insert_idx % candidate.size()
+				if candidate[prev_idx] != dup_val and candidate[next_idx] != dup_val:
+					candidate.insert(insert_idx, dup_val)
 			
 		var norm_key = string_mgr._get_canonical_key(candidate)
 		if forbidden_keys.has(norm_key):
@@ -356,4 +369,3 @@ func _on_daily_pressed() -> void:
 	FirebaseManager.set_meta("daily_name", "今日のお題")
 	
 	_transition_to_scene("res://scenes/Main.tscn")
-

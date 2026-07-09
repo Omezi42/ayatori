@@ -58,14 +58,18 @@ func create_default_levels() -> void:
 	
 	if GameSave and GameSave.has_rule("multi_loop"):
 		level_configs = [
-			{"name": "ふたごやま", "target": [0, 4, 8, 0, 5, 9], "layout_id": 2, "optimal_moves": 2},
+			{"name": "ふたごやま", "target": [0, 4, 8, 0, 5, 9], "layout_id": 2, "optimal_moves": 3},
 			{"name": "ダブルトライアングル", "target": [5, 2, 8, 5, 4, 6], "layout_id": 0, "optimal_moves": 5},
 			{"name": "砂時計", "target": [0, 1, 2, 3, 0, 9, 8, 7], "layout_id": 0, "optimal_moves": 7},
 			{"name": "メガネ", "target": [2, 1, 0, 9, 2, 3, 5, 8], "layout_id": 0, "optimal_moves": 6},
-			{"name": "クリスタル", "target": [0, 2, 5, 8, 0, 3, 5, 7], "layout_id": 0, "optimal_moves": 7},
+			{"name": "クリスタル", "target": [0, 2, 5, 8, 0, 3, 5, 7], "layout_id": 0, "optimal_moves": 6},
 			{"name": "クローバー", "target": [5, 4, 6, 5, 2, 8, 5, 0, 9], "layout_id": 0, "optimal_moves": 4},
 			{"name": "クラウン", "target": [1, 0, 9, 1, 2, 5, 8, 9, 5], "layout_id": 0, "optimal_moves": 6},
-			{"name": "かざぐるま", "target": [5, 1, 2, 5, 3, 4, 5, 6, 7, 5, 8, 9], "layout_id": 0, "optimal_moves": 8}
+			{"name": "かざぐるま", "target": [5, 1, 2, 5, 3, 4, 5, 6, 7, 5, 8, 9], "layout_id": 0, "optimal_moves": 8},
+			{"name": "メビウス", "target": [0, 1, 5, 8, 9, 0, 2, 5, 7, 9], "layout_id": 0, "optimal_moves": 8},
+			{"name": "タリスマン", "target": [5, 0, 2, 4, 5, 6, 8, 9, 1, 5, 3, 7], "layout_id": 0, "optimal_moves": 10},
+			{"name": "ギャラクシー", "target": [0, 4, 8, 2, 6, 0, 5, 9, 3, 7, 1, 5], "layout_id": 0, "optimal_moves": 11},
+			{"name": "スパイダー", "target": [0, 5, 1, 6, 2, 7, 3, 8, 4, 9, 0, 3, 6, 9], "layout_id": 0, "optimal_moves": 12}
 		]
 	else:
 		level_configs = [

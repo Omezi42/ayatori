@@ -318,7 +318,7 @@ func _create_item_card(item: Dictionary, category: String) -> void:
 func _draw_preview(ctrl: Control, item: Dictionary, category: String) -> void:
 	var rect = Rect2(Vector2.ZERO, ctrl.custom_minimum_size)
 	# プレビュー枠（グラデーション風の明るい背景と丸みのある枠線）
-	ctrl.draw_rect(rect, Color("#F8F9FA"), true, 16.0)
+	ctrl.draw_rect(rect, Color("#F8F9FA"), true)
 	ctrl.draw_rect(rect, Color("#E9ECEF"), false, 2.0, 16.0)
 	
 	var center = rect.size / 2.0
