@@ -23,9 +23,9 @@ var current_highlighted_finger_id: int = -1
 # ドラッグ結果シグナル（線分を引っ張って指にドロップした時に発火）
 signal segment_dropped_on_finger(segment_index: int, finger_id: int)
 
-const HIT_RADIUS := 25.0        # 線分のヒット判定半径(px)
-const FINGER_DROP_RADIUS := 50.0 # 指ドロップ判定半径(px)
-const MULTI_LOOP_OFFSET_RADIUS := 12.0 # 多重ループ時のオフセット半径(px)
+const HIT_RADIUS := 44.0        # 線分のヒット判定半径(px) [タッチ画面・マウス両対応のエルゴノミクス判定]
+const FINGER_DROP_RADIUS := 56.0 # 指ドロップ判定半径(px) [ドロップしやすさと糸の掴みやすさのバランス]
+const MULTI_LOOP_OFFSET_RADIUS := 14.0 # 多重ループ時のオフセット半径(px)
 
 var default_width: float = 16.0
 var dragging_width: float = 8.0
@@ -99,7 +99,8 @@ func _process(_delta: float) -> void:
 				_set_finger_highlight(current_highlighted_finger_id, true)
 	else:
 		var best_index = -1
-		if _find_finger_at(mouse_pos) < 0:
+		var pin_tap_r = 22.0 if (string_manager and string_manager.get("layout_id") == 3) else 30.0
+		if _find_finger_at(mouse_pos, pin_tap_r) < 0:
 			var arr = string_manager.current_string
 			if arr.size() >= 2:
 				var best_dist := HIT_RADIUS
@@ -144,10 +145,10 @@ func register_finger(finger_id: int, pos: Vector2) -> void:
 	finger_positions[finger_id] = pos
 
 # 指定座標に最も近い指IDを返す（範囲内にない場合は -1）
-func _find_finger_at(pos: Vector2) -> int:
+func _find_finger_at(pos: Vector2, custom_radius: float = -1.0) -> int:
 	var closest_id := -1
-	var drop_radius: float = 20.0 if (string_manager and string_manager.get("layout_id") == 3) else FINGER_DROP_RADIUS
-	var closest_dist: float = drop_radius
+	var check_radius: float = custom_radius if custom_radius > 0.0 else (34.0 if (string_manager and string_manager.get("layout_id") == 3) else FINGER_DROP_RADIUS)
+	var closest_dist: float = check_radius
 	for f_id in finger_positions:
 		var dist = pos.distance_to(finger_positions[f_id])
 		if dist < closest_dist:
@@ -244,7 +245,8 @@ func _try_start_drag(mouse_pos: Vector2) -> void:
 		return
 	
 	# 指の上をクリックした場合はドラッグを開始しない（指のタップ操作を優先）
-	if _find_finger_at(mouse_pos) >= 0:
+	var pin_tap_r = 22.0 if (string_manager and string_manager.get("layout_id") == 3) else 30.0
+	if _find_finger_at(mouse_pos, pin_tap_r) >= 0:
 		return
 		
 	# 各線分（ループ含む）との距離を計算して最も近いものを選択

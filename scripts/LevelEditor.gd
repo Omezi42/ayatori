@@ -45,23 +45,20 @@ func _ready() -> void:
 			ui_manager.share_button.pressed.connect(_on_save_pressed)
 		
 		# スタイルの準備 (ThemeConfig統一)
-		var btn_style = ThemeConfig.create_button_style(ThemeConfig.PRIMARY, 4, ThemeConfig.RADIUS_XL)
-		btn_style.content_margin_left = 20
-		btn_style.content_margin_right = 20
-		btn_style.content_margin_top = 10
-		btn_style.content_margin_bottom = 10
-		var btn_pressed = ThemeConfig.create_pressed_style(ThemeConfig.PRIMARY, ThemeConfig.RADIUS_XL)
-		btn_pressed.content_margin_left = 20
-		btn_pressed.content_margin_right = 20
+		# スタイルの準備 (ThemeConfig統一 - 大判3Dカプセル仕様)
+		var btn_style = ThemeConfig.create_button_style(ThemeConfig.PRIMARY, 6, ThemeConfig.RADIUS_PILL)
+		btn_style.content_margin_left = 24
+		btn_style.content_margin_right = 24
+		btn_style.content_margin_top = 12
+		btn_style.content_margin_bottom = 12
+		var btn_pressed = ThemeConfig.create_pressed_style(ThemeConfig.PRIMARY, ThemeConfig.RADIUS_PILL)
 		
-		var sec_style = ThemeConfig.create_button_style(ThemeConfig.PRIMARY_LIGHT, 4, ThemeConfig.RADIUS_XL)
-		sec_style.content_margin_left = 20
-		sec_style.content_margin_right = 20
-		sec_style.content_margin_top = 10
-		sec_style.content_margin_bottom = 10
-		var sec_pressed = ThemeConfig.create_pressed_style(ThemeConfig.PRIMARY_LIGHT, ThemeConfig.RADIUS_XL)
-		sec_pressed.content_margin_left = 20
-		sec_pressed.content_margin_right = 20
+		var sec_style = ThemeConfig.create_button_style(ThemeConfig.PRIMARY_LIGHT, 6, ThemeConfig.RADIUS_PILL)
+		sec_style.content_margin_left = 24
+		sec_style.content_margin_right = 24
+		sec_style.content_margin_top = 12
+		sec_style.content_margin_bottom = 12
+		var sec_pressed = ThemeConfig.create_pressed_style(ThemeConfig.PRIMARY_LIGHT, ThemeConfig.RADIUS_PILL)
 
 		var hbox = ui_manager.get_node_or_null("Control/FooterHBox")
 		if not hbox:
@@ -107,13 +104,37 @@ func _ready() -> void:
 		title_input = LineEdit.new()
 		title_input.name = "TitleInput"
 		title_input.placeholder_text = "お題のタイトルを入力"
-		title_input.custom_minimum_size = Vector2(300, 40)
+		title_input.custom_minimum_size = Vector2(320, 60)
 		dialog_vbox.add_child(title_input)
+		
+		# スマホ時に確実に文字を入力できる専用入力ボタンを追加
+		if ThemeConfig.is_mobile_device():
+			var dialog_prompt_btn = Button.new()
+			dialog_prompt_btn.name = "DialogPromptBtn"
+			dialog_prompt_btn.text = " スマホで文字を入力"
+			dialog_prompt_btn.icon = load("res://assets/ic_edit.svg")
+			dialog_prompt_btn.add_theme_constant_override("icon_max_width", 22)
+			dialog_prompt_btn.custom_minimum_size = Vector2(320, 56)
+			dialog_prompt_btn.add_theme_font_size_override("font_size", 22)
+			ThemeConfig.apply_button_theme(dialog_prompt_btn, ThemeConfig.create_button_style(ThemeConfig.PRIMARY_LIGHT, 6, ThemeConfig.RADIUS_PILL))
+			ThemeConfig.setup_button_animations(dialog_prompt_btn)
+			dialog_prompt_btn.pressed.connect(func():
+				if OS.has_feature("web") and Engine.has_singleton("JavaScriptBridge"):
+					var res = JavaScriptBridge.eval("window.prompt('お題のタイトルを入力してください', '" + title_input.text.replace("'", "\\'") + "')")
+					if res != null and str(res) != "null":
+						title_input.text = str(res)
+				else:
+					title_input.grab_focus()
+					if DisplayServer.has_method("virtual_keyboard_show"):
+						DisplayServer.virtual_keyboard_show(title_input.text)
+			)
+			dialog_vbox.add_child(dialog_prompt_btn)
 		
 		dialog.add_child(dialog_vbox)
 		ThemeConfig.apply_dialog_theme(dialog)
 		ThemeConfig.apply_line_edit_theme(title_input)
 		dialog.confirmed.connect(_on_dialog_confirmed)
+		title_input.text_submitted.connect(func(_t): dialog.hide(); _on_dialog_confirmed())
 		add_child(dialog)
 		
 		# 目標画像表示パネルと手数ラベルを非表示
@@ -173,6 +194,63 @@ func _ready() -> void:
 		
 	FirebaseManager.save_completed.connect(_on_save_completed)
 	FirebaseManager.save_failed.connect(_on_save_failed)
+	
+	get_tree().root.size_changed.connect(_on_viewport_size_changed)
+	_on_viewport_size_changed()
+
+func _on_viewport_size_changed() -> void:
+	if not is_inside_tree() or not string_manager:
+		return
+	var layout_id = string_manager.layout_id
+	var positions = PinLayout.get_positions(layout_id)
+	var screen_size = get_viewport().get_visible_rect().size
+	var play_area_y = 80.0
+	var play_area_h = screen_size.y - 80.0 - 100.0
+	var play_area_center_y = play_area_y + play_area_h / 2.0
+	
+	var min_pin = Vector2(9999, 9999)
+	var max_pin = Vector2(-9999, -9999)
+	for p in positions:
+		min_pin.x = min(min_pin.x, p.x)
+		min_pin.y = min(min_pin.y, p.y)
+		max_pin.x = max(max_pin.x, p.x)
+		max_pin.y = max(max_pin.y, p.y)
+	
+	var pin_size = max_pin - min_pin
+	var pin_center = (min_pin + max_pin) / 2.0
+	
+	var margin = 40.0
+	var available_w = screen_size.x - margin * 2
+	var available_h = play_area_h - margin * 2
+	var scale_x = available_w / max(pin_size.x, 1.0)
+	var scale_y = available_h / max(pin_size.y, 1.0)
+	var pin_scale = min(scale_x, scale_y, 1.0)
+	
+	var scaled_positions: Array[Vector2] = []
+	for p in positions:
+		var sp = Vector2(
+			(p.x - pin_center.x) * pin_scale + (screen_size.x / 2.0),
+			(p.y - pin_center.y) * pin_scale + play_area_center_y
+		)
+		scaled_positions.append(sp)
+		
+	var bg_rect = get_node_or_null("HandBackground")
+	if bg_rect and bg_rect is Node2D:
+		bg_rect.scale = Vector2(pin_scale, pin_scale)
+		bg_rect.position = Vector2(
+			screen_size.x / 2.0 - pin_center.x * pin_scale,
+			play_area_center_y - pin_center.y * pin_scale
+		)
+		
+	for node in get_tree().get_nodes_in_group("fingers"):
+		if node is FingerNode:
+			var id = node.finger_id
+			if id >= 0 and id < scaled_positions.size():
+				node.global_position = scaled_positions[id]
+				if string_drawer:
+					string_drawer.register_finger(id, scaled_positions[id])
+	if string_drawer:
+		string_drawer.update_line()
 
 func _on_finger_clicked(finger_id: int) -> void:
 	if string_drawer and string_drawer.is_input_locked: return
@@ -203,7 +281,7 @@ func _on_layout_selected(index: int) -> void:
 				area.set_script(load("res://scripts/FingerNode.gd"))
 				var shape = CollisionShape2D.new()
 				var circle = CircleShape2D.new()
-				circle.radius = 40.0
+				circle.radius = 28.0 # ピンのタッチ判定（糸を掴みやすくするために小さめ）
 				shape.shape = circle
 				area.add_child(shape)
 				area.add_to_group("fingers")
@@ -238,6 +316,7 @@ func _on_layout_selected(index: int) -> void:
 		string_manager.reset_to_initial(init_arr)
 		if ui_manager and ui_manager.has_method("set_initial_state"):
 			ui_manager.set_initial_state(init_arr)
+	_on_viewport_size_changed()
 	if string_drawer:
 		string_drawer.update_line()
 
@@ -256,7 +335,7 @@ func _on_save_pressed() -> void:
 			title_input = dialog.get_node_or_null("VBoxContainer/TitleInput") as LineEdit
 		if title_input:
 			title_input.text = ""
-		dialog.popup_centered(Vector2(400, 150))
+		ThemeConfig.popup_responsive_dialog(dialog, 400, 180)
 
 func _on_dialog_confirmed() -> void:
 	var dialog = get_node_or_null("TitleDialog")

@@ -6,10 +6,10 @@ var settings_panel: PanelContainer
 func _ready() -> void:
 	# 1. 全体テーマ（フォントアウトラインの統一）
 	var custom_theme = Theme.new()
-	custom_theme.set_color("font_outline_color", "Label", ThemeConfig.TEXT_DARK)
-	custom_theme.set_color("font_outline_color", "Button", ThemeConfig.TEXT_DARK)
-	custom_theme.set_constant("outline_size", "Label", 12)
-	custom_theme.set_constant("outline_size", "Button", 8)
+	custom_theme.set_color("font_outline_color", "Label", Color(1, 1, 1, 0.9))
+	custom_theme.set_color("font_outline_color", "Button", Color(1, 1, 1, 0.6))
+	custom_theme.set_constant("outline_size", "Label", 6)
+	custom_theme.set_constant("outline_size", "Button", 4)
 	self.theme = custom_theme
 
 	# 2. プライマリボタン（スタート）のスタイル
@@ -28,52 +28,40 @@ func _ready() -> void:
 	start_btn.icon = load("res://assets/ic_sparkle.svg")
 	start_btn.add_theme_constant_override("icon_max_width", 36)
 	
-	# 3. セカンダリボタン（作成・読込・ショップ）のスタイル
-	var secondary_normal = ThemeConfig.create_button_style(ThemeConfig.PRIMARY_LIGHT, 4)
-	secondary_normal.content_margin_left = 16
-	secondary_normal.content_margin_right = 16
-	secondary_normal.content_margin_top = 12
-	secondary_normal.content_margin_bottom = 12
-	var secondary_pressed = ThemeConfig.create_pressed_style(ThemeConfig.PRIMARY_LIGHT)
-	secondary_pressed.content_margin_left = 16
-	secondary_pressed.content_margin_right = 16
-	secondary_pressed.content_margin_top = 16
-	secondary_pressed.content_margin_bottom = 8
-	
+	# 3. セカンダリボタン（作成・読込・ショップ）のリッチスタイル (商業スマホアプリ調)
 	var create_btn = $ButtonContainer/SubMenu/CreateButton
-	ThemeConfig.apply_button_theme(create_btn, secondary_normal, secondary_pressed)
-	create_btn.add_theme_font_size_override("font_size", 26)
+	var c_norm = ThemeConfig.create_button_style(Color("#2EC4B6"), 6)
+	var c_press = ThemeConfig.create_pressed_style(Color("#2EC4B6"))
+	ThemeConfig.apply_button_theme(create_btn, c_norm, c_press)
+	create_btn.add_theme_font_size_override("font_size", 24)
 	create_btn.icon = load("res://assets/ic_edit.svg")
-	create_btn.add_theme_constant_override("icon_max_width", 24)
+	create_btn.add_theme_constant_override("icon_max_width", 26)
 	
 	var search_btn = $ButtonContainer/SubMenu/SearchButton
-	ThemeConfig.apply_button_theme(search_btn, secondary_normal, secondary_pressed)
-	search_btn.add_theme_font_size_override("font_size", 26)
+	var s_norm = ThemeConfig.create_button_style(Color("#3A86FF"), 6)
+	var s_press = ThemeConfig.create_pressed_style(Color("#3A86FF"))
+	ThemeConfig.apply_button_theme(search_btn, s_norm, s_press)
+	search_btn.add_theme_font_size_override("font_size", 24)
 	search_btn.icon = load("res://assets/ic_search.svg")
-	search_btn.add_theme_constant_override("icon_max_width", 24)
+	search_btn.add_theme_constant_override("icon_max_width", 26)
 	
 	var shop_btn = $ButtonContainer/SubMenu/ShopButton
 	if shop_btn:
-		ThemeConfig.apply_button_theme(shop_btn, secondary_normal, secondary_pressed)
-		shop_btn.add_theme_font_size_override("font_size", 26)
+		var sh_norm = ThemeConfig.create_button_style(Color("#FF9F1C"), 6)
+		var sh_press = ThemeConfig.create_pressed_style(Color("#FF9F1C"))
+		ThemeConfig.apply_button_theme(shop_btn, sh_norm, sh_press)
+		shop_btn.add_theme_font_size_override("font_size", 24)
 		shop_btn.icon = load("res://assets/ic_shop.svg")
-		shop_btn.add_theme_constant_override("icon_max_width", 24)
+		shop_btn.add_theme_constant_override("icon_max_width", 26)
 	
 	# 今日のお題ボタン（メインメニュー配置）
 	var daily_btn = $ButtonContainer/DailyButton
-	var daily_normal = ThemeConfig.create_button_style(ThemeConfig.ACCENT, 6)
-	daily_normal.content_margin_top = 16
-	daily_normal.content_margin_bottom = 16
-	daily_normal.content_margin_left = 32
-	daily_normal.content_margin_right = 32
-	var daily_pressed = ThemeConfig.create_pressed_style(ThemeConfig.ACCENT)
-	daily_pressed.content_margin_left = 32
-	daily_pressed.content_margin_right = 32
+	var daily_normal = ThemeConfig.create_button_style(Color("#9B5DE5"), 8)
+	var daily_pressed = ThemeConfig.create_pressed_style(Color("#9B5DE5"))
 	ThemeConfig.apply_button_theme(daily_btn, daily_normal, daily_pressed)
 	daily_btn.add_theme_font_size_override("font_size", 32)
 	daily_btn.icon = load("res://assets/ic_calendar.svg")
-	daily_btn.add_theme_constant_override("icon_max_width", 28)
-	daily_btn.add_theme_color_override("font_outline_color", Color(0.3, 0.6, 0.7, 0.8))
+	daily_btn.add_theme_constant_override("icon_max_width", 32)
 	daily_btn.pressed.connect(_on_daily_pressed)
 	
 	# 4. ボタンアニメーション設定
@@ -98,6 +86,9 @@ func _ready() -> void:
 	# 6. 設定ボタン（右下に控えめに配置）
 	_setup_settings_corner()
 	
+	get_tree().root.size_changed.connect(_on_viewport_size_changed)
+	_on_viewport_size_changed()
+	
 	# 7. ロゴのアニメーション（ふわふわ浮遊させる）
 	var logo = $LogoContainer
 	logo.pivot_offset = logo.size / 2.0
@@ -116,9 +107,51 @@ func _ready() -> void:
 			l.add_theme_color_override("font_outline_color", ThemeConfig.STAR_OUTLINE)
 		$ButtonContainer.add_child(stars_box)
 
+func _on_viewport_size_changed() -> void:
+	if not is_inside_tree():
+		return
+	var screen_size = get_viewport_rect().size
+	var logo_container = get_node_or_null("LogoContainer")
+	var button_container = get_node_or_null("ButtonContainer")
+	var sub_menu = get_node_or_null("ButtonContainer/SubMenu")
+	
+	if logo_container:
+		var main_title = logo_container.get_node_or_null("MainTitle") as Label
+		var sub_title = logo_container.get_node_or_null("SubTitle") as Label
+		if main_title:
+			var target_font = min(80, int(screen_size.x * 0.11))
+			main_title.add_theme_font_size_override("font_size", max(36, target_font))
+		if sub_title:
+			var sub_font = min(36, int(screen_size.x * 0.05))
+			sub_title.add_theme_font_size_override("font_size", max(18, sub_font))
+			
+	if sub_menu and sub_menu is HBoxContainer:
+		var available_w = min(screen_size.x - (20.0 if screen_size.x < 850.0 else 48.0), 880.0)
+		var btn_w = max(110.0, (available_w - 20.0) / 3.0)
+		for child in sub_menu.get_children():
+			if child is Button:
+				child.custom_minimum_size = Vector2(btn_w, 80 if screen_size.x < 850.0 else 76)
+				child.add_theme_font_size_override("font_size", max(22, min(26, int(btn_w * 0.22))))
+				
+	var start_btn = get_node_or_null("ButtonContainer/StartButton") as Button
+	if start_btn:
+		start_btn.custom_minimum_size = Vector2(min(560.0, screen_size.x - 16.0), 116 if screen_size.x < 850.0 else 104)
+		start_btn.add_theme_font_size_override("font_size", 36 if screen_size.x < 850.0 else 32)
+	var daily_btn = get_node_or_null("ButtonContainer/DailyButton") as Button
+	if daily_btn:
+		daily_btn.custom_minimum_size = Vector2(min(560.0, screen_size.x - 16.0), 88 if screen_size.x < 850.0 else 80)
+		daily_btn.add_theme_font_size_override("font_size", 28 if screen_size.x < 850.0 else 26)
+
+	var settings_hbox = get_node_or_null("SettingsCornerHBox") as Control
+	if settings_hbox:
+		settings_hbox.position = Vector2(screen_size.x - 80, screen_size.y - 68)
+	if settings_panel:
+		settings_panel.position = Vector2(max(16.0, screen_size.x - 320.0), screen_size.y - settings_panel.size.y - 80.0)
+
 func _setup_settings_corner() -> void:
 	# 設定ボタン（右下隅に小さく配置）
 	var settings_hbox = HBoxContainer.new()
+	settings_hbox.name = "SettingsCornerHBox"
 	settings_hbox.position = Vector2(1180, 660)
 	settings_hbox.add_theme_constant_override("separation", ThemeConfig.SPACING_SM)
 	
@@ -250,8 +283,8 @@ func apply_theme_colors() -> void:
 	_update_bg_color()
 	
 	if theme:
-		theme.set_color("font_outline_color", "Label", ThemeConfig.TEXT_DARK)
-		theme.set_color("font_outline_color", "Button", ThemeConfig.TEXT_DARK)
+		theme.set_color("font_outline_color", "Label", Color(1, 1, 1, 0.9))
+		theme.set_color("font_outline_color", "Button", Color(1, 1, 1, 0.6))
 	
 	var primary_normal = ThemeConfig.create_button_style(ThemeConfig.PRIMARY, 6)
 	primary_normal.content_margin_top = 24

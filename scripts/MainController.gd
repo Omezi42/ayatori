@@ -280,7 +280,7 @@ func _on_level_changed(level_idx: int, level_data: LevelData) -> void:
 				area.set_script(load("res://scripts/FingerNode.gd"))
 				var shape = CollisionShape2D.new()
 				var circle = CircleShape2D.new()
-				circle.radius = 40.0
+				circle.radius = 28.0 # ピンのタッチ判定（糸を掴みやすくするために小さめ）
 				shape.shape = circle
 				area.add_child(shape)
 				area.add_to_group("fingers")

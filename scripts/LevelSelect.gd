@@ -9,8 +9,8 @@ func _ready() -> void:
 	
 	# 全体テーマ設定
 	var ui_theme = Theme.new()
-	ui_theme.set_color("font_outline_color", "Label", ThemeConfig.TEXT_DARK)
-	ui_theme.set_constant("outline_size", "Label", 8)
+	ui_theme.set_color("font_outline_color", "Label", Color(1, 1, 1, 0.9))
+	ui_theme.set_constant("outline_size", "Label", 4)
 	self.theme = ui_theme
 
 	var header = $VBoxContainer/Header
@@ -24,13 +24,15 @@ func _ready() -> void:
 	var rules_btn = Button.new()
 	rules_btn.name = "RulesButton"
 	rules_btn.text = "ルール設定"
-	var sec_style = ThemeConfig.create_button_style(ThemeConfig.PRIMARY_LIGHT, 4, ThemeConfig.RADIUS_MD)
-	sec_style.content_margin_left = 12
-	sec_style.content_margin_right = 12
-	var sec_pressed = ThemeConfig.create_pressed_style(ThemeConfig.PRIMARY_LIGHT, ThemeConfig.RADIUS_MD)
-	sec_pressed.content_margin_left = 12
-	sec_pressed.content_margin_right = 12
+	var sec_style = ThemeConfig.create_button_style(ThemeConfig.PRIMARY_LIGHT, 6, ThemeConfig.RADIUS_PILL)
+	sec_style.content_margin_left = 20
+	sec_style.content_margin_right = 20
+	sec_style.content_margin_top = 10
+	sec_style.content_margin_bottom = 10
+	var sec_pressed = ThemeConfig.create_pressed_style(ThemeConfig.PRIMARY_LIGHT, ThemeConfig.RADIUS_PILL)
 	ThemeConfig.apply_button_theme(rules_btn, sec_style, sec_pressed)
+	rules_btn.custom_minimum_size = Vector2(140, 56)
+	rules_btn.add_theme_font_size_override("font_size", 24)
 	ThemeConfig.setup_button_animations(rules_btn)
 	rules_btn.pressed.connect(_on_rules_btn_pressed)
 	header.add_child(rules_btn)
@@ -41,6 +43,26 @@ func _ready() -> void:
 	
 	back_button.pressed.connect(_on_back_pressed)
 	apply_theme_colors()
+	get_tree().root.size_changed.connect(_on_viewport_size_changed)
+	_on_viewport_size_changed()
+
+func _on_viewport_size_changed() -> void:
+	if not is_inside_tree() or not is_instance_valid(grid_container):
+		return
+	var screen_size = get_viewport_rect().size
+	var available_w = screen_size.x - (16.0 if screen_size.x < 850.0 else 48.0)
+	
+	var card_w = 260.0 if screen_size.x >= 900.0 else 240.0
+	var sep_w = 24.0 if screen_size.x >= 900.0 else 16.0
+	var cols = max(1, int((available_w + sep_w) / (card_w + sep_w)))
+	if grid_container.columns != cols:
+		grid_container.columns = cols
+		
+	# スマホ画面は画面横幅いっぱい（余白極小）の大画面エルゴノミクスバナー
+	var target_card_w = max(240.0, (available_w - ((cols - 1) * sep_w)) / float(cols)) if cols > 1 else available_w
+	for card in grid_container.get_children():
+		if card is PanelContainer:
+			card.custom_minimum_size = Vector2(target_card_w, 136 if cols == 1 else 230)
 
 func _reload_levels_with_loading() -> void:
 	var loading_rect = ColorRect.new()
@@ -95,17 +117,16 @@ func apply_theme_colors() -> void:
 	if hand_bg and hand_bg.has_method("queue_redraw"):
 		hand_bg.queue_redraw()
 	
-	# 戻るボタンのスタイル
-	var back_normal = ThemeConfig.create_button_style(ThemeConfig.PRIMARY_LIGHT, 4)
-	back_normal.content_margin_left = 20
-	back_normal.content_margin_right = 20
-	back_normal.content_margin_top = 10
-	back_normal.content_margin_bottom = 10
-	var back_pressed = ThemeConfig.create_pressed_style(ThemeConfig.PRIMARY_LIGHT)
-	back_pressed.content_margin_left = 20
-	back_pressed.content_margin_right = 20
+	# 戻るボタンのスタイル (横画面・スマホ両対応の大判エルゴノミクス仕様)
+	var back_normal = ThemeConfig.create_button_style(ThemeConfig.PRIMARY_LIGHT, 6, ThemeConfig.RADIUS_PILL)
+	back_normal.content_margin_left = 24
+	back_normal.content_margin_right = 24
+	back_normal.content_margin_top = 12
+	back_normal.content_margin_bottom = 12
+	var back_pressed = ThemeConfig.create_pressed_style(ThemeConfig.PRIMARY_LIGHT, ThemeConfig.RADIUS_PILL)
 	ThemeConfig.apply_button_theme(back_button, back_normal, back_pressed)
-	back_button.add_theme_font_size_override("font_size", ThemeConfig.FONT_BODY)
+	back_button.custom_minimum_size = Vector2(130, 56)
+	back_button.add_theme_font_size_override("font_size", 24)
 	ThemeConfig.setup_button_animations(back_button)
 		
 	# ステージカードのスタイル更新
@@ -124,13 +145,26 @@ func _update_bg_color() -> void:
 
 func _create_stage_card(index: int, level_data: LevelData) -> PanelContainer:
 	var panel = PanelContainer.new()
-	panel.custom_minimum_size = Vector2(240, 220)
+	panel.custom_minimum_size = Vector2(250, 240)
+	panel.mouse_filter = Control.MOUSE_FILTER_PASS
 	
-	var card_style = ThemeConfig.create_panel_style(
-		Color(ThemeConfig.PRIMARY.r, ThemeConfig.PRIMARY.g, ThemeConfig.PRIMARY.b, 0.92),
-		ThemeConfig.RADIUS_LG,
-		6
+	var stars_count = 0
+	if GameSave:
+		stars_count = GameSave.get_level_stars(level_data.level_name)
+		
+	var card_style = ThemeConfig.create_mobile_card_style(
+		ThemeConfig.BG_WHITE if stars_count > 0 else Color("#FAFBFD"),
+		ThemeConfig.RADIUS_XL
 	)
+	if stars_count > 0:
+		card_style.border_color = ThemeConfig.STAR_GOLD
+		card_style.border_width_top = 4
+		card_style.border_width_bottom = 6
+	else:
+		card_style.border_color = ThemeConfig.PRIMARY_LIGHT
+		card_style.border_width_top = 2
+		card_style.border_width_bottom = 4
+		
 	panel.add_theme_stylebox_override("panel", card_style)
 	
 	var vbox = VBoxContainer.new()
@@ -138,17 +172,32 @@ func _create_stage_card(index: int, level_data: LevelData) -> PanelContainer:
 	vbox.add_theme_constant_override("separation", ThemeConfig.SPACING_SM)
 	panel.add_child(vbox)
 	
-	# ステージ番号
+	# ステージ番号バッジ (カプセルチップ)
+	var badge_panel = PanelContainer.new()
+	var badge_style = StyleBoxFlat.new()
+	badge_style.bg_color = ThemeConfig.PRIMARY if stars_count > 0 else Color("#9E9FB8")
+	badge_style.corner_radius_top_left = ThemeConfig.RADIUS_PILL
+	badge_style.corner_radius_top_right = ThemeConfig.RADIUS_PILL
+	badge_style.corner_radius_bottom_left = ThemeConfig.RADIUS_PILL
+	badge_style.corner_radius_bottom_right = ThemeConfig.RADIUS_PILL
+	badge_style.content_margin_left = 14
+	badge_style.content_margin_right = 14
+	badge_style.content_margin_top = 2
+	badge_style.content_margin_bottom = 2
+	badge_panel.add_theme_stylebox_override("panel", badge_style)
+	badge_panel.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	
 	var num_label = Label.new()
 	num_label.text = "STAGE %d" % [index + 1]
 	num_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	num_label.add_theme_font_size_override("font_size", 16)
-	num_label.add_theme_color_override("font_color", Color(1, 1, 1, 0.7))
-	vbox.add_child(num_label)
+	num_label.add_theme_font_size_override("font_size", 18)
+	num_label.add_theme_color_override("font_color", Color.WHITE)
+	badge_panel.add_child(num_label)
+	vbox.add_child(badge_panel)
 	
 	# サムネイル
 	var thumb_control = Control.new()
-	thumb_control.custom_minimum_size = Vector2(180, 100)
+	thumb_control.custom_minimum_size = Vector2(200, 115)
 	vbox.add_child(thumb_control)
 	if level_data.target_sequence.size() > 0:
 		_create_thumbnail(level_data.target_sequence, level_data.layout_id, thumb_control)
@@ -157,56 +206,78 @@ func _create_stage_card(index: int, level_data: LevelData) -> PanelContainer:
 	var title_label = Label.new()
 	title_label.text = level_data.level_name
 	title_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	title_label.add_theme_font_size_override("font_size", ThemeConfig.FONT_BODY)
-	title_label.add_theme_color_override("font_color", ThemeConfig.TEXT_LIGHT)
+	title_label.add_theme_font_size_override("font_size", 26)
+	title_label.add_theme_color_override("font_color", ThemeConfig.TEXT_DARK)
 	vbox.add_child(title_label)
 	
-	# 星表示
-	var stars_count = 0
-	if GameSave:
-		stars_count = GameSave.get_level_stars(level_data.level_name)
-	var stars_text = ""
-	for j in range(stars_count):
-		stars_text += "★"
-	for j in range(3 - stars_count):
-		stars_text += "☆"
+	# 星表示または「未クリア」チップ
+	if stars_count > 0:
+		var stars_text = ""
+		for j in range(stars_count):
+			stars_text += "★"
+		for j in range(3 - stars_count):
+			stars_text += "☆"
+		var stars_label = Label.new()
+		stars_label.text = stars_text
+		stars_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		stars_label.add_theme_font_size_override("font_size", 30)
+		stars_label.add_theme_color_override("font_color", ThemeConfig.STAR_GOLD)
+		stars_label.add_theme_constant_override("outline_size", 4)
+		stars_label.add_theme_color_override("font_outline_color", Color(1, 1, 1, 0.8))
+		vbox.add_child(stars_label)
+	else:
+		var chal_hbox = HBoxContainer.new()
+		chal_hbox.alignment = BoxContainer.ALIGNMENT_CENTER
+		var chal_icon = TextureRect.new()
+		chal_icon.texture = load("res://assets/ic_sparkle.svg")
+		chal_icon.custom_minimum_size = Vector2(20, 20)
+		chal_icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		chal_icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		chal_icon.modulate = Color("#FF849E")
+		chal_hbox.add_child(chal_icon)
 		
-	var stars_label = Label.new()
-	stars_label.text = stars_text
-	stars_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	stars_label.add_theme_font_size_override("font_size", ThemeConfig.FONT_BODY)
-	stars_label.add_theme_color_override("font_color", ThemeConfig.STAR_GOLD)
-	stars_label.add_theme_constant_override("outline_size", 4)
-	stars_label.add_theme_color_override("font_outline_color", ThemeConfig.STAR_OUTLINE)
-	vbox.add_child(stars_label)
+		var chal_label = Label.new()
+		chal_label.text = "チャレンジ！"
+		chal_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		chal_label.add_theme_font_size_override("font_size", 20)
+		chal_label.add_theme_color_override("font_color", Color("#FF849E"))
+		chal_hbox.add_child(chal_label)
+		vbox.add_child(chal_hbox)
 	
-	# 透明なクリッカブルボタン（カード全体をタップ可能に）
+	# 透明なクリッカブルボタン（カード全体をタッチ＆タップ感触）
 	var btn = Button.new()
+	btn.mouse_filter = Control.MOUSE_FILTER_PASS
 	var empty_style = StyleBoxEmpty.new()
-	var pressed_style = StyleBoxFlat.new()
-	pressed_style.bg_color = Color(0, 0, 0, 0.15)
-	pressed_style.corner_radius_top_left = ThemeConfig.RADIUS_LG
-	pressed_style.corner_radius_top_right = ThemeConfig.RADIUS_LG
-	pressed_style.corner_radius_bottom_left = ThemeConfig.RADIUS_LG
-	pressed_style.corner_radius_bottom_right = ThemeConfig.RADIUS_LG
-	
 	btn.add_theme_stylebox_override("normal", empty_style)
 	btn.add_theme_stylebox_override("hover", empty_style)
-	btn.add_theme_stylebox_override("pressed", pressed_style)
+	btn.add_theme_stylebox_override("pressed", empty_style)
 	btn.add_theme_stylebox_override("focus", empty_style)
 	btn.pressed.connect(func(): _on_level_selected(index))
 	panel.add_child(btn)
 	
-	# ホバーアニメーション（カード浮き上がり）
-	panel.mouse_entered.connect(func():
-		var tw = panel.create_tween().set_trans(Tween.TRANS_SPRING).set_ease(Tween.EASE_OUT)
-		tw.tween_property(panel, "scale", Vector2(1.05, 1.05), 0.3)
-	)
-	panel.mouse_exited.connect(func():
-		var tw = panel.create_tween().set_trans(Tween.TRANS_SPRING).set_ease(Tween.EASE_OUT)
-		tw.tween_property(panel, "scale", Vector2(1.0, 1.0), 0.3)
-	)
+	# 商用スマホアプリ級・気持ちいいバネ感タッチアニメーション
 	panel.pivot_offset = panel.custom_minimum_size / 2.0
+	panel.resized.connect(func(): if is_instance_valid(panel): panel.pivot_offset = panel.size / 2.0)
+	btn.mouse_entered.connect(func():
+		if is_instance_valid(panel):
+			var tw = panel.create_tween().set_trans(Tween.TRANS_SPRING).set_ease(Tween.EASE_OUT)
+			tw.tween_property(panel, "scale", Vector2(1.04, 1.04), 0.28)
+	)
+	btn.mouse_exited.connect(func():
+		if is_instance_valid(panel):
+			var tw = panel.create_tween().set_trans(Tween.TRANS_SPRING).set_ease(Tween.EASE_OUT)
+			tw.tween_property(panel, "scale", Vector2(1.0, 1.0), 0.28)
+	)
+	btn.button_down.connect(func():
+		if is_instance_valid(panel):
+			var tw = panel.create_tween().set_trans(Tween.TRANS_SPRING).set_ease(Tween.EASE_OUT)
+			tw.tween_property(panel, "scale", Vector2(0.93, 0.93), 0.12)
+	)
+	btn.button_up.connect(func():
+		if is_instance_valid(panel):
+			var tw = panel.create_tween().set_trans(Tween.TRANS_SPRING).set_ease(Tween.EASE_OUT)
+			tw.tween_property(panel, "scale", Vector2(1.0, 1.0), 0.28)
+	)
 	
 	return panel
 
@@ -250,7 +321,7 @@ func _on_rules_btn_pressed() -> void:
 		ThemeConfig.apply_dialog_theme(dialog)
 		add_child(dialog)
 		
-	dialog.popup_centered(Vector2(450, 200))
+	ThemeConfig.popup_responsive_dialog(dialog, 450, 200)
 
 func _create_thumbnail(sequence: Array, layout_id: int, parent_control: Control) -> void:
 	var line = Line2D.new()

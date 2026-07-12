@@ -9,7 +9,7 @@
 [ext_resource type="Script" path="res://scripts/HandBackground.gd" id="7_hb"]
 
 [sub_resource type="CircleShape2D" id="CircleShape2D_f"]
-radius = 40.0
+radius = 28.0
 
 [node name="Main" type="Node2D" node_paths=PackedStringArray("string_manager", "string_drawer", "level_manager", "ui_manager")]
 script = ExtResource("1_le")

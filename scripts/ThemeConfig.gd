@@ -114,6 +114,7 @@ const FONT_CAPTION = 18
 const MIN_TAP_SIZE = Vector2(48, 48)
 
 # ===== ボタンスタイル生成ヘルパー =====
+# ===== ボタンスタイル生成ヘルパー (商業用スマホアプリ級3Dカプセル・グロス調) =====
 func create_button_style(bg_col: Color, shadow_y: float = 6.0, radius: int = RADIUS_PILL) -> StyleBoxFlat:
 	var style = StyleBoxFlat.new()
 	style.bg_color = bg_col
@@ -121,10 +122,21 @@ func create_button_style(bg_col: Color, shadow_y: float = 6.0, radius: int = RAD
 	style.corner_radius_top_right = radius
 	style.corner_radius_bottom_left = radius
 	style.corner_radius_bottom_right = radius
+	
+	# リッチなハイライト＆3D底面ボトムエッジ
+	style.border_width_top = 3
+	style.border_width_bottom = int(max(4.0, shadow_y))
+	style.border_width_left = 2
+	style.border_width_right = 2
+	style.border_color = bg_col.lightened(0.35)
+	style.border_color.a = 0.85 # 上面＆側面の光沢
+	
+	# 下部の厚み表現（立体感）
 	if shadow_y > 0:
-		style.shadow_color = PRIMARY_DARK
-		style.shadow_size = 0
-		style.shadow_offset = Vector2(0, shadow_y)
+		style.shadow_color = Color(0.05, 0.04, 0.06, 0.12)
+		style.shadow_size = 8
+		style.shadow_offset = Vector2(0, 4)
+		
 	style.content_margin_top = 16
 	style.content_margin_bottom = 16
 	style.content_margin_left = 32
@@ -133,8 +145,14 @@ func create_button_style(bg_col: Color, shadow_y: float = 6.0, radius: int = RAD
 
 func create_pressed_style(bg_col: Color, radius: int = RADIUS_PILL) -> StyleBoxFlat:
 	var style = create_button_style(bg_col, 0, radius)
-	style.content_margin_top += 6
-	style.content_margin_bottom -= 6
+	style.border_width_top = 2
+	style.border_width_bottom = 2
+	style.border_color = bg_col.darkened(0.15)
+	style.shadow_color = Color(0.05, 0.04, 0.06, 0.08)
+	style.shadow_size = 2
+	style.shadow_offset = Vector2(0, 1)
+	style.content_margin_top += 4
+	style.content_margin_bottom -= 4
 	return style
 
 func create_panel_style(bg_col: Color = BG_WHITE, radius: int = RADIUS_LG, shadow_size: int = 8) -> StyleBoxFlat:
@@ -144,12 +162,53 @@ func create_panel_style(bg_col: Color = BG_WHITE, radius: int = RADIUS_LG, shado
 	style.corner_radius_top_right = radius
 	style.corner_radius_bottom_left = radius
 	style.corner_radius_bottom_right = radius
-	style.shadow_color = SHADOW
+	style.border_width_top = 2
+	style.border_width_bottom = 2
+	style.border_width_left = 2
+	style.border_width_right = 2
+	style.border_color = Color(1, 1, 1, 0.65) if bg_col.get_luminance() > 0.5 else Color(1, 1, 1, 0.12)
+	style.shadow_color = Color(0.06, 0.04, 0.07, 0.08)
 	style.shadow_size = shadow_size
+	style.shadow_offset = Vector2(0, 4)
 	style.content_margin_left = SPACING_MD
 	style.content_margin_right = SPACING_MD
 	style.content_margin_top = SPACING_MD
 	style.content_margin_bottom = SPACING_MD
+	return style
+
+func create_mobile_card_style(bg_col: Color = BG_WHITE, radius: int = RADIUS_XL) -> StyleBoxFlat:
+	var style = create_panel_style(bg_col, radius, 12)
+	style.content_margin_left = 24
+	style.content_margin_right = 24
+	style.content_margin_top = 24
+	style.content_margin_bottom = 24
+	return style
+
+func create_pill_tab_style(is_selected: bool, accent_color: Color = PRIMARY) -> StyleBoxFlat:
+	var style = StyleBoxFlat.new()
+	style.corner_radius_top_left = RADIUS_PILL
+	style.corner_radius_top_right = RADIUS_PILL
+	style.corner_radius_bottom_left = RADIUS_PILL
+	style.corner_radius_bottom_right = RADIUS_PILL
+	if is_selected:
+		style.bg_color = accent_color
+		style.border_width_top = 2
+		style.border_width_bottom = 4
+		style.border_color = accent_color.lightened(0.3)
+		style.shadow_color = Color(0, 0, 0, 0.1)
+		style.shadow_size = 4
+		style.shadow_offset = Vector2(0, 2)
+	else:
+		style.bg_color = BG_WHITE.blend(Color(1, 1, 1, 0.8))
+		style.border_width_top = 2
+		style.border_width_bottom = 2
+		style.border_width_left = 2
+		style.border_width_right = 2
+		style.border_color = PRIMARY_LIGHT
+	style.content_margin_left = 24
+	style.content_margin_right = 24
+	style.content_margin_top = 10
+	style.content_margin_bottom = 10
 	return style
 
 func create_settings_panel_style() -> StyleBoxFlat:
@@ -164,26 +223,28 @@ func create_settings_panel_style() -> StyleBoxFlat:
 	style.corner_radius_top_right = RADIUS_LG
 	style.corner_radius_bottom_left = RADIUS_LG
 	style.corner_radius_bottom_right = RADIUS_LG
-	style.shadow_color = Color(PRIMARY_DARK.r, PRIMARY_DARK.g, PRIMARY_DARK.b, 0.15)
+	style.shadow_color = Color(0.05, 0.04, 0.07, 0.1)
 	style.shadow_size = 12
-	style.shadow_offset = Vector2(0, 6)
+	style.shadow_offset = Vector2(0, 4)
 	style.content_margin_left = SPACING_MD
 	style.content_margin_right = SPACING_MD
 	style.content_margin_top = SPACING_MD
 	style.content_margin_bottom = SPACING_MD
 	return style
 
-func apply_button_theme(btn: Button, normal: StyleBoxFlat, pressed: StyleBoxFlat) -> void:
+func apply_button_theme(btn: Button, normal: StyleBoxFlat, pressed: StyleBoxFlat = null) -> void:
+	if pressed == null and normal != null:
+		pressed = create_pressed_style(normal.bg_color, normal.corner_radius_top_left)
 	btn.add_theme_stylebox_override("normal", normal)
 	btn.add_theme_stylebox_override("hover", normal)
 	btn.add_theme_stylebox_override("pressed", pressed)
 	btn.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
 	btn.add_theme_color_override("font_color", TEXT_LIGHT)
 	btn.add_theme_color_override("font_hover_color", TEXT_LIGHT)
-	btn.add_theme_constant_override("outline_size", 4)
-	btn.add_theme_color_override("font_outline_color", Color(PRIMARY_DARK, 0.4))
+	btn.add_theme_constant_override("outline_size", 6)
+	btn.add_theme_color_override("font_outline_color", Color(PRIMARY_DARK.r, PRIMARY_DARK.g, PRIMARY_DARK.b, 0.5))
 
-func apply_icon_button_theme(btn: Button, normal: StyleBoxFlat, pressed: StyleBoxFlat) -> void:
+func apply_icon_button_theme(btn: Button, normal: StyleBoxFlat, pressed: StyleBoxFlat = null) -> void:
 	apply_button_theme(btn, normal, pressed)
 	btn.add_theme_color_override("icon_normal_color", TEXT_LIGHT)
 	btn.add_theme_color_override("icon_hover_color", TEXT_LIGHT)
@@ -194,19 +255,22 @@ func setup_button_animations(btn: Button) -> void:
 		return
 	btn.set_meta("anim_setup", true)
 	btn.pivot_offset = btn.size / 2.0
+	btn.resized.connect(func(): if is_instance_valid(btn): btn.pivot_offset = btn.size / 2.0)
 	btn.mouse_entered.connect(func(): _animate_btn(btn, Vector2(1.05, 1.05)))
 	btn.mouse_exited.connect(func(): _animate_btn(btn, Vector2(1.0, 1.0)))
-	btn.button_down.connect(func(): _animate_btn(btn, Vector2(0.95, 0.95)))
+	btn.button_down.connect(func(): _animate_btn(btn, Vector2(0.93, 0.93), 0.12))
 	btn.button_up.connect(func():
-		if btn.get_global_rect().has_point(btn.get_global_mouse_position()):
-			_animate_btn(btn, Vector2(1.05, 1.05))
-		else:
-			_animate_btn(btn, Vector2(1.0, 1.0))
+		if is_instance_valid(btn) and btn.get_global_rect().has_point(btn.get_global_mouse_position()):
+			_animate_btn(btn, Vector2(1.05, 1.05), 0.28)
+		elif is_instance_valid(btn):
+			_animate_btn(btn, Vector2(1.0, 1.0), 0.28)
 	)
 
-func _animate_btn(btn: Button, target_scale: Vector2) -> void:
+func _animate_btn(btn: Button, target_scale: Vector2, duration: float = 0.3) -> void:
+	if not is_instance_valid(btn):
+		return
 	var tween = btn.create_tween().set_trans(Tween.TRANS_SPRING).set_ease(Tween.EASE_OUT)
-	tween.tween_property(btn, "scale", target_scale, 0.3)
+	tween.tween_property(btn, "scale", target_scale, duration)
 
 func apply_line_edit_theme(line_edit: LineEdit) -> void:
 	if not line_edit:
@@ -215,22 +279,28 @@ func apply_line_edit_theme(line_edit: LineEdit) -> void:
 	line_edit.add_theme_color_override("font_color", TEXT_DARK)
 	line_edit.add_theme_color_override("font_placeholder_color", Color(TEXT_MID.r, TEXT_MID.g, TEXT_MID.b, 0.7))
 	line_edit.add_theme_color_override("caret_color", PRIMARY)
+	line_edit.virtual_keyboard_enabled = true
+	line_edit.clear_button_enabled = true
+	line_edit.caret_blink = true
+	line_edit.select_all_on_focus = false # スマホ操作で全選択され誤削除されるのを防ぐ
+	line_edit.focus_mode = Control.FOCUS_ALL
+	line_edit.mouse_filter = Control.MOUSE_FILTER_STOP
 	
 	var normal_style = StyleBoxFlat.new()
 	normal_style.bg_color = BG_WHITE
-	normal_style.corner_radius_top_left = RADIUS_MD
-	normal_style.corner_radius_top_right = RADIUS_MD
-	normal_style.corner_radius_bottom_left = RADIUS_MD
-	normal_style.corner_radius_bottom_right = RADIUS_MD
+	normal_style.corner_radius_top_left = RADIUS_LG
+	normal_style.corner_radius_top_right = RADIUS_LG
+	normal_style.corner_radius_bottom_left = RADIUS_LG
+	normal_style.corner_radius_bottom_right = RADIUS_LG
 	normal_style.border_width_left = 3
 	normal_style.border_width_right = 3
 	normal_style.border_width_top = 3
 	normal_style.border_width_bottom = 3
 	normal_style.border_color = PRIMARY_LIGHT
-	normal_style.content_margin_left = SPACING_MD
-	normal_style.content_margin_right = SPACING_MD
-	normal_style.content_margin_top = 8
-	normal_style.content_margin_bottom = 8
+	normal_style.content_margin_left = 20
+	normal_style.content_margin_right = 20
+	normal_style.content_margin_top = 14
+	normal_style.content_margin_bottom = 14
 	
 	var focus_style = normal_style.duplicate()
 	focus_style.border_color = PRIMARY
@@ -246,6 +316,39 @@ func apply_line_edit_theme(line_edit: LineEdit) -> void:
 	line_edit.add_theme_stylebox_override("normal", normal_style)
 	line_edit.add_theme_stylebox_override("focus", focus_style)
 	line_edit.add_theme_stylebox_override("read_only", read_only_style)
+	
+	enable_mobile_text_input(line_edit, line_edit.placeholder_text if line_edit.placeholder_text != "" else "文字を入力")
+
+func is_mobile_device() -> bool:
+	return OS.has_feature("mobile") or OS.has_feature("web_android") or OS.has_feature("web_ios")
+
+func enable_mobile_text_input(line_edit: LineEdit, prompt_title: String = "テキストを入力") -> void:
+	if not line_edit or line_edit.has_meta("mobile_input_setup"):
+		return
+	line_edit.set_meta("mobile_input_setup", true)
+	line_edit.focus_mode = Control.FOCUS_ALL
+	line_edit.virtual_keyboard_enabled = true
+	line_edit.mouse_filter = Control.MOUSE_FILTER_STOP
+	
+	# スマホ・タッチ操作時およびWeb HTML5エクスポート時にキーボードや入力プロンプトを確実に表示する
+	line_edit.gui_input.connect(func(event: InputEvent):
+		if (event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT and event.pressed) or (event is InputEventScreenTouch and event.pressed):
+			if not is_mobile_device():
+				return
+			line_edit.grab_focus()
+			if DisplayServer.has_method("virtual_keyboard_show"):
+				DisplayServer.virtual_keyboard_show(line_edit.text)
+			
+			# Webブラウザ（スマホSafari・Chrome等）のCanvasでソフトキーボードがブロックされた場合の救済プロンプト
+			if OS.has_feature("web") and Engine.has_singleton("JavaScriptBridge"):
+				var current_t = line_edit.text.replace("'", "\\'").replace('"', '\\"')
+				var js_code = "window.prompt('" + prompt_title + "', '" + current_t + "')"
+				var res = JavaScriptBridge.eval(js_code)
+				if res != null and str(res) != "null":
+					line_edit.text = str(res)
+					line_edit.text_changed.emit(str(res))
+					line_edit.text_submitted.emit(str(res))
+	)
 
 func apply_option_button_theme(btn: OptionButton, normal: StyleBoxFlat = null, pressed: StyleBoxFlat = null) -> void:
 	if not btn:
@@ -420,6 +523,19 @@ func apply_dialog_theme(dialog: AcceptDialog) -> void:
 			var sec_p = create_pressed_style(PRIMARY_LIGHT, RADIUS_LG)
 			apply_button_theme(cancel_btn, sec_n, sec_p)
 			setup_button_animations(cancel_btn)
+
+func popup_responsive_dialog(dialog: AcceptDialog, default_width: float = 450.0, default_height: float = 220.0) -> void:
+	if not dialog or not dialog.is_inside_tree():
+		return
+	var screen_size = dialog.get_viewport().get_visible_rect().size
+	if dialog.get_tree() and dialog.get_tree().root:
+		screen_size = dialog.get_tree().root.get_visible_rect().size
+	var target_w = min(default_width, max(280.0, screen_size.x - 40.0))
+	var target_h = min(default_height, max(180.0, screen_size.y - 40.0))
+	for child in dialog.get_children():
+		if child is Control:
+			child.custom_minimum_size = Vector2(min(child.custom_minimum_size.x, target_w - 40.0), child.custom_minimum_size.y)
+	dialog.popup_centered(Vector2(target_w, target_h))
 
 func create_icon_label(icon_path: String, text_str: String, font_size: int = FONT_BODY, icon_size: int = 24, font_color: Color = TEXT_DARK) -> HBoxContainer:
 	var hbox = HBoxContainer.new()

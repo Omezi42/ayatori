@@ -77,11 +77,34 @@ func _ready() -> void:
 	_setup_settings_panel()
 	_setup_layer_order()
 	_apply_premium_styles()
+	get_tree().root.size_changed.connect(_on_viewport_size_changed)
+	_on_viewport_size_changed()
 	
 	if message_label:
 		message_label.text = ""
 		message_label.modulate.a = 0.0
 		message_label.scale = Vector2(0.5, 0.5)
+
+func _on_viewport_size_changed() -> void:
+	if not is_inside_tree():
+		return
+	var screen_size = get_viewport().get_visible_rect().size
+	var is_mobile = screen_size.x < 850.0
+	var free_mode_share_btn = get_node_or_null("Control/HeaderHBox/FreeModeShareBtn") as Button
+	
+	for btn in [share_button, settings_btn, home_btn, res_home_btn, res_share_icon_btn, free_mode_share_btn]:
+		if btn:
+			btn.custom_minimum_size = Vector2(64, 64) if is_mobile else Vector2(52, 52)
+			btn.add_theme_font_size_override("font_size", 22 if is_mobile else 18)
+			
+	for btn in [hint_button, undo_button, reset_button]:
+		if btn:
+			btn.custom_minimum_size = Vector2(120, 68) if is_mobile else Vector2(88, 58)
+			btn.add_theme_font_size_override("font_size", 24 if is_mobile else 18)
+			
+	var header = get_node_or_null("Control/HeaderHBox")
+	if header:
+		header.add_theme_constant_override("separation", 8 if is_mobile else 12)
 
 func _process(delta: float) -> void:
 	if _is_hint_thinking:
@@ -492,29 +515,56 @@ func _setup_dynamic_nodes() -> void:
 	
 	$Control.add_child(hint_thinking_panel)
 
-# === Phase 5: 統一スタイル適用 ===
+# === Phase 5: 商業用スマホアプリ級リッチスタイル適用 ===
 func _apply_premium_styles() -> void:
-	var btn_normal = ThemeConfig.create_button_style(ThemeConfig.PRIMARY, 4.0, ThemeConfig.RADIUS_XL)
+	var btn_normal = ThemeConfig.create_button_style(ThemeConfig.PRIMARY, 6.0, ThemeConfig.RADIUS_PILL)
 	btn_normal.content_margin_left = 16
 	btn_normal.content_margin_right = 16
-	btn_normal.content_margin_top = 8
-	btn_normal.content_margin_bottom = 8
+	btn_normal.content_margin_top = 10
+	btn_normal.content_margin_bottom = 10
 	
 	var btn_hover = btn_normal.duplicate()
 	btn_hover.bg_color = ThemeConfig.PRIMARY_LIGHT
 	
-	var btn_pressed = btn_normal.duplicate()
-	btn_pressed.content_margin_top += 4
-	btn_pressed.content_margin_bottom -= 4
+	var btn_pressed = ThemeConfig.create_pressed_style(ThemeConfig.PRIMARY, ThemeConfig.RADIUS_PILL)
 	
 	var free_mode_share_btn = get_node_or_null("Control/HeaderHBox/FreeModeShareBtn") as Button
 	
-	# 全ボタンにスタイル適用
-	for btn in [hint_button, undo_button, reset_button, share_button, settings_btn, home_btn, res_home_btn, res_share_icon_btn, free_mode_share_btn]:
+	# 基本アイコンボタンにスタイル適用
+	for btn in [share_button, settings_btn, home_btn, res_home_btn, res_share_icon_btn, free_mode_share_btn]:
 		if btn:
 			ThemeConfig.apply_icon_button_theme(btn, btn_normal, btn_pressed)
 			btn.add_theme_stylebox_override("hover", btn_hover)
+			btn.custom_minimum_size = Vector2(52, 52)
 			ThemeConfig.setup_button_animations(btn)
+			
+	# スマホ操作性抜群の専用カラーカプセルボタン (ヒント・もどす・リセット)
+	if hint_button:
+		var h_norm = ThemeConfig.create_button_style(Color("#FFB703"), 6.0, ThemeConfig.RADIUS_PILL)
+		h_norm.content_margin_left = 20
+		h_norm.content_margin_right = 20
+		var h_press = ThemeConfig.create_pressed_style(Color("#FFB703"), ThemeConfig.RADIUS_PILL)
+		ThemeConfig.apply_icon_button_theme(hint_button, h_norm, h_press)
+		hint_button.custom_minimum_size = Vector2(88, 58)
+		ThemeConfig.setup_button_animations(hint_button)
+		
+	if undo_button:
+		var u_norm = ThemeConfig.create_button_style(Color("#219EBC"), 6.0, ThemeConfig.RADIUS_PILL)
+		u_norm.content_margin_left = 20
+		u_norm.content_margin_right = 20
+		var u_press = ThemeConfig.create_pressed_style(Color("#219EBC"), ThemeConfig.RADIUS_PILL)
+		ThemeConfig.apply_icon_button_theme(undo_button, u_norm, u_press)
+		undo_button.custom_minimum_size = Vector2(88, 58)
+		ThemeConfig.setup_button_animations(undo_button)
+		
+	if reset_button:
+		var r_norm = ThemeConfig.create_button_style(Color("#FF5C8D"), 6.0, ThemeConfig.RADIUS_PILL)
+		r_norm.content_margin_left = 20
+		r_norm.content_margin_right = 20
+		var r_press = ThemeConfig.create_pressed_style(Color("#FF5C8D"), ThemeConfig.RADIUS_PILL)
+		ThemeConfig.apply_icon_button_theme(reset_button, r_norm, r_press)
+		reset_button.custom_minimum_size = Vector2(88, 58)
+		ThemeConfig.setup_button_animations(reset_button)
 	
 	# InfoPanel スタイルと文字色設定 (背景パネル有無で自動調整)
 	var info_panel = get_node_or_null("Control/HeaderHBox/InfoPanel")

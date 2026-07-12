@@ -206,16 +206,27 @@ func is_state_matching_target(state: Array[int], target: Array[int]) -> bool:
 	if target.is_empty() or state.is_empty():
 		return false
 	
-	var mask_s = get_edge_mask(state)
-	var mask_t: int = 0
-	if target == _cached_target_string and _cached_target_mask != -1:
-		mask_t = _cached_target_mask
+	if layout_id >= 3:
+		var set_s = get_edge_set(state)
+		var set_t: Array = []
+		if target == _cached_target_string and not _cached_target_edges.is_empty():
+			set_t = _cached_target_edges
+		else:
+			set_t = get_edge_set(target)
+			_cached_target_string = target.duplicate()
+			_cached_target_edges = set_t.duplicate()
+		return set_s == set_t and not set_s.is_empty()
 	else:
-		mask_t = get_edge_mask(target)
-		_cached_target_string = target.duplicate()
-		_cached_target_mask = mask_t
-	
-	return mask_s == mask_t and mask_s != 0
+		var mask_s = get_edge_mask(state)
+		var mask_t: int = 0
+		if target == _cached_target_string and _cached_target_mask != -1:
+			mask_t = _cached_target_mask
+		else:
+			mask_t = get_edge_mask(target)
+			_cached_target_string = target.duplicate()
+			_cached_target_mask = mask_t
+		
+		return mask_s == mask_t and mask_s != 0
 
 func _normalize_sequence(seq: Array) -> Array[int]:
 	var res: Array[int] = []
