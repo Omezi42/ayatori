@@ -32,12 +32,12 @@ signal guide_toggled(is_visible: bool)
 signal hint_requested
 
 var clear_particles: CPUParticles2D
-var clear_sound: AudioStreamPlayer
 var center_container: CenterContainer
 var result_panel: PanelContainer
 var next_button: Button
 var result_stars_label: Label
 var res_home_btn: Button
+var _cached_result_stars: int = 3
 var res_share_icon_btn: Button
 var share_menu_panel: PanelContainer
 var copy_image_btn: Button
@@ -108,7 +108,10 @@ func _setup_header() -> void:
 	if home_tex:
 		home_btn.icon = home_tex
 		home_btn.add_theme_constant_override("icon_max_width", 28)
-	home_btn.pressed.connect(func(): _transition_to_scene("res://scenes/Title.tscn"))
+	home_btn.pressed.connect(func():
+		if SoundManager: SoundManager.play_se("button_tap")
+		_transition_to_scene("res://scenes/Title.tscn")
+	)
 	header.add_child(home_btn)
 	header.move_child(home_btn, 0)
 	
@@ -143,7 +146,10 @@ func _setup_footer() -> void:
 			hint_button.vertical_icon_alignment = VERTICAL_ALIGNMENT_TOP
 			hint_button.add_theme_constant_override("icon_max_width", 28)
 		hint_button.add_theme_font_size_override("font_size", ThemeConfig.FONT_BUTTON_SMALL)
-		hint_button.pressed.connect(func(): hint_requested.emit())
+		hint_button.pressed.connect(func():
+			if SoundManager: SoundManager.play_se("button_tap")
+			hint_requested.emit()
+		)
 		footer.add_child(hint_button)
 		footer.move_child(hint_button, 0)
 	
@@ -189,6 +195,11 @@ func _setup_footer() -> void:
 		settings_btn.add_theme_constant_override("icon_max_width", 28)
 	settings_btn.pressed.connect(func(): 
 		settings_panel.visible = !settings_panel.visible
+		if SoundManager:
+			if settings_panel.visible:
+				SoundManager.play_se("panel_open")
+			else:
+				SoundManager.play_se("panel_close")
 	)
 	footer.add_child(settings_btn)
 
@@ -231,15 +242,31 @@ func _setup_settings_panel() -> void:
 	)
 	set_vbox.add_child(guide_toggle_button)
 	
-	var vol_label = ThemeConfig.create_icon_label("res://assets/ic_volume.svg", "おんりょう", ThemeConfig.FONT_BODY, 24, ThemeConfig.TEXT_DARK)
-	set_vbox.add_child(vol_label)
+	# BGM音量
+	var bgm_label = ThemeConfig.create_icon_label("res://assets/ic_volume.svg", "BGM", ThemeConfig.FONT_BODY, 24, ThemeConfig.TEXT_DARK)
+	set_vbox.add_child(bgm_label)
 	
-	var vol_slider = HSlider.new()
-	vol_slider.value = 50
-	vol_slider.custom_minimum_size = Vector2(200, 30)
-	vol_slider.value_changed.connect(_on_volume_changed)
-	set_vbox.add_child(vol_slider)
-	ThemeConfig.apply_slider_theme(vol_slider)
+	var bgm_slider = HSlider.new()
+	bgm_slider.value = SoundManager.get_bgm_volume() if SoundManager else 80
+	bgm_slider.custom_minimum_size = Vector2(200, 30)
+	bgm_slider.value_changed.connect(func(val): 
+		if SoundManager: SoundManager.set_bgm_volume(val)
+	)
+	set_vbox.add_child(bgm_slider)
+	ThemeConfig.apply_slider_theme(bgm_slider)
+	
+	# SE音量
+	var se_label = ThemeConfig.create_icon_label("res://assets/ic_volume.svg", "SE", ThemeConfig.FONT_BODY, 24, ThemeConfig.TEXT_DARK)
+	set_vbox.add_child(se_label)
+	
+	var se_slider = HSlider.new()
+	se_slider.value = SoundManager.get_se_volume() if SoundManager else 80
+	se_slider.custom_minimum_size = Vector2(200, 30)
+	se_slider.value_changed.connect(func(val): 
+		if SoundManager: SoundManager.set_se_volume(val)
+	)
+	set_vbox.add_child(se_slider)
+	ThemeConfig.apply_slider_theme(se_slider)
 	
 	var theme_label = ThemeConfig.create_icon_label("res://assets/ic_palette.svg", "テーマ", ThemeConfig.FONT_BODY, 24, ThemeConfig.TEXT_DARK)
 	set_vbox.add_child(theme_label)
@@ -303,9 +330,6 @@ func _setup_dynamic_nodes() -> void:
 	
 	clear_particles = p_left
 	clear_particles.set_meta("partner", p_right)
-	
-	clear_sound = AudioStreamPlayer.new()
-	add_child(clear_sound)
 	
 	# 結果パネル
 	center_container = CenterContainer.new()
@@ -590,6 +614,8 @@ func apply_theme_colors() -> void:
 
 
 func _transition_to_scene(path: String) -> void:
+	if SoundManager:
+		SoundManager.play_se("transition")
 	if share_menu_panel:
 		share_menu_panel.hide()
 	if transition_rect:
@@ -631,6 +657,7 @@ func update_moves_display(moves: int, optimal: int) -> void:
 	moves_label.text = "%d手 / 最短%d  %s" % [moves, optimal, stars_text]
 
 func set_result_stars(stars: int) -> void:
+	_cached_result_stars = stars
 	if result_stars_label:
 		var stars_text = ""
 		for i in range(stars):
@@ -706,8 +733,11 @@ func play_clear_animation() -> void:
 	if settings_panel:
 		settings_panel.visible = false
 		
-	if clear_sound:
-		clear_sound.play()
+	if SoundManager:
+		if _cached_result_stars == 3:
+			SoundManager.play_jingle("perfect_clear")
+		else:
+			SoundManager.play_jingle("level_clear")
 	if clear_particles:
 		clear_particles.emitting = true
 		if clear_particles.has_meta("partner"):
@@ -968,9 +998,13 @@ func _generate_share_image(callback: Callable) -> void:
 	callback.call(buffer, img)
 
 func _on_volume_changed(val: float) -> void:
-	var bus_idx = AudioServer.get_bus_index("Master")
-	if bus_idx >= 0:
-		AudioServer.set_bus_volume_db(bus_idx, linear_to_db(val / 100.0))
+	# SoundManager経由で音量を管理（後方互換のため残す）
+	if SoundManager:
+		SoundManager.set_master_volume(val)
+	else:
+		var bus_idx = AudioServer.get_bus_index("Master")
+		if bus_idx >= 0:
+			AudioServer.set_bus_volume_db(bus_idx, linear_to_db(val / 100.0))
 
 func _on_share_pressed() -> void:
 	var share_text = "「あやとりパズル -ゆびさきキャンバス-」で遊びました！ #unityroom"

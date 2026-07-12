@@ -35,6 +35,8 @@ func _ready() -> void:
 	rules_btn.pressed.connect(_on_rules_btn_pressed)
 	header.add_child(rules_btn)
 	
+	if SoundManager:
+		SoundManager.play_bgm("bgm_levelselect")
 	_reload_levels_with_loading()
 	
 	back_button.pressed.connect(_on_back_pressed)
@@ -209,15 +211,22 @@ func _create_stage_card(index: int, level_data: LevelData) -> PanelContainer:
 	return panel
 
 func _on_back_pressed() -> void:
+	if SoundManager:
+		SoundManager.play_se("button_tap")
+		SoundManager.play_se("transition")
 	get_tree().change_scene_to_file("res://scenes/Title.tscn")
 
 func _on_level_selected(idx: int) -> void:
+	if SoundManager:
+		SoundManager.play_se("button_tap")
+		SoundManager.play_se("transition")
 	FirebaseManager.set_meta("selected_official_level", idx)
 	if FirebaseManager.has_meta("ugc_target"):
 		FirebaseManager.remove_meta("ugc_target")
 	get_tree().change_scene_to_file("res://scenes/Main.tscn")
 
 func _on_rules_btn_pressed() -> void:
+	if SoundManager: SoundManager.play_se("button_tap")
 	var dialog = get_node_or_null("RulesDialog")
 	if not dialog:
 		dialog = AcceptDialog.new()

@@ -126,12 +126,14 @@ func _ready() -> void:
 			else:
 				typed_init = [0, 4, 5, 9]
 			ld.initial_sequence = typed_init
+			ld.layout_id = layout_id
+			if string_manager:
+				string_manager.layout_id = layout_id
 			ld.optimal_moves = -1
 			if FirebaseManager.has_meta("ugc_optimal_moves"):
 				ld.optimal_moves = int(FirebaseManager.get_meta("ugc_optimal_moves"))
-			elif string_manager and string_manager.has_method("calculate_optimal_moves_count"):
+			if ld.optimal_moves <= 0 and string_manager and string_manager.has_method("calculate_optimal_moves_count"):
 				ld.optimal_moves = string_manager.calculate_optimal_moves_count(typed_init, typed_seq)
-			ld.layout_id = layout_id
 			if FirebaseManager.has_meta("ugc_active_rules"):
 				ld.active_rules = FirebaseManager.get_meta("ugc_active_rules")
 			_on_level_changed(-1, ld)
@@ -173,6 +175,8 @@ func _on_guide_toggled(is_visible: bool) -> void:
 		guide_lines.visible = is_visible
 
 func _on_level_changed(level_idx: int, level_data: LevelData) -> void:
+	if SoundManager:
+		SoundManager.play_bgm("bgm_gameplay")
 	_is_calculating_hint = false
 	_is_waiting_for_hint = false
 	if ui_manager and ui_manager.has_method("set_hint_thinking"):
@@ -312,7 +316,10 @@ func _on_level_changed(level_idx: int, level_data: LevelData) -> void:
 	_current_level_name = level_data.level_name
 	
 	# 最短手数を取得
-	if level_data.optimal_moves < 0:
+	if level_data.optimal_moves <= 0 and string_manager and string_manager.has_method("calculate_optimal_moves_count"):
+		level_data.optimal_moves = string_manager.calculate_optimal_moves_count(_current_initial_state, level_data.target_sequence)
+		
+	if level_data.optimal_moves <= 0:
 		_current_optimal_moves = max(1, level_data.target_sequence.size() - 2)
 	else:
 		_current_optimal_moves = level_data.optimal_moves
@@ -445,6 +452,8 @@ func _handle_game_clear() -> void:
 	
 	await get_tree().create_timer(2.0).timeout
 	current_state = GameState.RESULT
+	if SoundManager:
+		SoundManager.play_se("star_get")
 	if ui_manager:
 		ui_manager.show_result_panel()
 

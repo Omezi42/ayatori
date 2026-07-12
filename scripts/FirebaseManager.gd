@@ -5,7 +5,7 @@ const BASE_URL = "https://firestore.googleapis.com/v1/projects/" + PROJECT_ID + 
 
 signal save_completed(code)
 signal save_failed(error)
-signal load_completed(target_sequence, layout_id, title, active_rules)
+signal load_completed(target_sequence, layout_id, title, active_rules, optimal_moves)
 signal load_failed(error)
 signal levels_fetched(levels_data)
 signal fetch_failed(error)
@@ -43,7 +43,7 @@ func _generate_short_code() -> String:
 	return code
 
 # ステージを保存
-func save_level(title: String, target_sequence: Array[int], layout_id: int = 0):
+func save_level(title: String, target_sequence: Array[int], layout_id: int = 0, optimal_moves: int = -1):
 	network_request_started.emit()
 	var code = _generate_short_code()
 	var url = BASE_URL + "?documentId=" + code
@@ -68,6 +68,7 @@ func save_level(title: String, target_sequence: Array[int], layout_id: int = 0):
 			"play_count": { "integerValue": "0" },
 			"likes": { "integerValue": "0" },
 			"layout_id": { "integerValue": str(layout_id) },
+			"optimal_moves": { "integerValue": str(optimal_moves) },
 			"is_advanced": { "booleanValue": GameSave.active_rules.get("multi_loop", false) if GameSave else false },
 			"active_rules": {
 				"arrayValue": {
@@ -127,6 +128,10 @@ func _on_load_request_completed(_result: int, response_code: int, _headers: Pack
 			var layout_id = 0
 			if json["fields"].has("layout_id"):
 				layout_id = int(json["fields"]["layout_id"]["integerValue"])
+				
+			var optimal_moves = -1
+			if json["fields"].has("optimal_moves"):
+				optimal_moves = int(json["fields"]["optimal_moves"]["integerValue"])
 			
 			var active_rules_dict: Dictionary = {}
 			if json["fields"].has("active_rules"):
@@ -142,7 +147,7 @@ func _on_load_request_completed(_result: int, response_code: int, _headers: Pack
 			if json["fields"].has("title"):
 				title = json["fields"]["title"]["stringValue"]
 				
-			emit_signal("load_completed", seq, layout_id, title, active_rules_dict)
+			emit_signal("load_completed", seq, layout_id, title, active_rules_dict, optimal_moves)
 		else:
 			emit_signal("load_failed", "データが見つかりません")
 	elif response_code == 404:

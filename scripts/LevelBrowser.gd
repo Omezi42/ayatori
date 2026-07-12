@@ -31,6 +31,8 @@ func _ready() -> void:
 	FirebaseManager.load_completed.connect(_on_level_loaded)
 	FirebaseManager.load_failed.connect(_on_load_failed)
 	
+	if SoundManager:
+		SoundManager.play_bgm("bgm_levelselect")
 	_fetch_data()
 	apply_theme_colors()
 
@@ -210,16 +212,22 @@ func _on_fetch_failed(err: String) -> void:
 	loading_label.show()
 
 func _play_level(code: String, btn: Button) -> void:
+	if SoundManager: SoundManager.play_se("button_tap")
 	btn.text = "読込中"
 	btn.disabled = true
 	FirebaseManager.increment_play_count(code)
 	FirebaseManager.load_level(code)
 
-func _on_level_loaded(target_sequence: Array, layout_id: int, title: String, active_rules: Dictionary = {}) -> void:
+func _on_level_loaded(target_sequence: Array, layout_id: int, title: String, active_rules: Dictionary = {}, optimal_moves: int = -1) -> void:
+	if SoundManager: SoundManager.play_se("transition")
 	FirebaseManager.set_meta("ugc_target", target_sequence)
 	FirebaseManager.set_meta("ugc_layout_id", layout_id)
 	FirebaseManager.set_meta("ugc_title", title)
 	FirebaseManager.set_meta("ugc_active_rules", active_rules)
+	if optimal_moves > 0:
+		FirebaseManager.set_meta("ugc_optimal_moves", optimal_moves)
+	elif FirebaseManager.has_meta("ugc_optimal_moves"):
+		FirebaseManager.remove_meta("ugc_optimal_moves")
 	get_tree().change_scene_to_file("res://scenes/Main.tscn")
 
 func _on_load_failed(err: String) -> void:
@@ -230,9 +238,15 @@ func _on_load_failed(err: String) -> void:
 	_fetch_data()
 
 func _on_back_pressed() -> void:
+	if SoundManager:
+		SoundManager.play_se("button_tap")
+		SoundManager.play_se("transition")
 	get_tree().change_scene_to_file("res://scenes/Title.tscn")
 
 func _on_create_pressed() -> void:
+	if SoundManager:
+		SoundManager.play_se("button_tap")
+		SoundManager.play_se("transition")
 	get_tree().change_scene_to_file("res://scenes/LevelEditor.tscn")
 
 func _create_thumbnail(sequence: Array, layout_id: int, parent_control: Control) -> void:

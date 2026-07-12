@@ -1,6 +1,6 @@
-[gd_scene load_steps=4 format=3]
+[gd_scene format=3 uid="uid://c4tvd7n0hrrfq"]
 
-[ext_resource type="Script" path="res://scripts/Title.gd" id="1_tl"]
+[ext_resource type="Script" uid="uid://b0jfymxmnn7iq" path="res://scripts/Title.gd" id="1_tl"]
 
 [sub_resource type="Gradient" id="Gradient_bg"]
 colors = PackedColorArray(1, 0.9725, 0.9059, 1, 0.9216, 0.8784, 0.7922, 1)
@@ -11,7 +11,7 @@ fill = 1
 fill_from = Vector2(0.5, 0.5)
 fill_to = Vector2(0.8, 0.8)
 
-[node name="Title" type="Control"]
+[node name="Title" type="Control" unique_id=1814400434]
 layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0
@@ -20,7 +20,7 @@ grow_horizontal = 2
 grow_vertical = 2
 script = ExtResource("1_tl")
 
-[node name="Background" type="TextureRect" parent="."]
+[node name="Background" type="TextureRect" parent="." unique_id=1303850546]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -29,7 +29,7 @@ grow_horizontal = 2
 grow_vertical = 2
 texture = SubResource("GradientTexture2D_bg")
 
-[node name="LogoContainer" type="VBoxContainer" parent="."]
+[node name="LogoContainer" type="VBoxContainer" parent="." unique_id=937190430]
 layout_mode = 1
 anchors_preset = -1
 anchor_right = 1.0
@@ -38,17 +38,15 @@ grow_horizontal = 2
 theme_override_constants/separation = 0
 alignment = 1
 
-[node name="MainTitle" type="Label" parent="LogoContainer"]
+[node name="MainTitle" type="Label" parent="LogoContainer" unique_id=653567234]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.96, 0.45, 0.65, 1)
 theme_override_constants/outline_size = 12
 theme_override_font_sizes/font_size = 80
 text = "あやとりパズル"
 horizontal_alignment = 1
-rotation = -0.05
-pivot_offset = Vector2(240, 50)
 
-[node name="SubTitle" type="Label" parent="LogoContainer"]
+[node name="SubTitle" type="Label" parent="LogoContainer" unique_id=414401754]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.96, 0.45, 0.65, 1)
 theme_override_constants/outline_size = 8
@@ -56,7 +54,7 @@ theme_override_font_sizes/font_size = 36
 text = "-ゆびさきキャンバス-"
 horizontal_alignment = 1
 
-[node name="ButtonContainer" type="VBoxContainer" parent="."]
+[node name="ButtonContainer" type="VBoxContainer" parent="." unique_id=1056637691]
 layout_mode = 1
 anchors_preset = -1
 anchor_top = 0.38
@@ -67,45 +65,45 @@ grow_vertical = 2
 theme_override_constants/separation = 28
 alignment = 1
 
-[node name="StartButton" type="Button" parent="ButtonContainer"]
+[node name="StartButton" type="Button" parent="ButtonContainer" unique_id=1737547898]
 custom_minimum_size = Vector2(380, 96)
 layout_mode = 2
 size_flags_horizontal = 4
 theme_override_font_sizes/font_size = 48
 text = "スタート"
 
-[node name="DailyButton" type="Button" parent="ButtonContainer"]
+[node name="DailyButton" type="Button" parent="ButtonContainer" unique_id=2004761651]
 custom_minimum_size = Vector2(380, 72)
 layout_mode = 2
 size_flags_horizontal = 4
 theme_override_font_sizes/font_size = 36
 text = "今日のお題"
 
-[node name="SubMenu" type="HBoxContainer" parent="ButtonContainer"]
+[node name="SubMenu" type="HBoxContainer" parent="ButtonContainer" unique_id=110729876]
 layout_mode = 2
 size_flags_horizontal = 4
 theme_override_constants/separation = 20
 alignment = 1
 
-[node name="CreateButton" type="Button" parent="ButtonContainer/SubMenu"]
+[node name="CreateButton" type="Button" parent="ButtonContainer/SubMenu" unique_id=1628122061]
 custom_minimum_size = Vector2(240, 72)
 layout_mode = 2
 theme_override_font_sizes/font_size = 28
 text = "フリーモード"
 
-[node name="SearchButton" type="Button" parent="ButtonContainer/SubMenu"]
+[node name="SearchButton" type="Button" parent="ButtonContainer/SubMenu" unique_id=1975175225]
 custom_minimum_size = Vector2(240, 72)
 layout_mode = 2
 theme_override_font_sizes/font_size = 28
 text = "お題をさがす"
 
-[node name="ShopButton" type="Button" parent="ButtonContainer/SubMenu"]
+[node name="ShopButton" type="Button" parent="ButtonContainer/SubMenu" unique_id=1899810599]
 custom_minimum_size = Vector2(240, 72)
 layout_mode = 2
 theme_override_font_sizes/font_size = 28
 text = "きせかえショップ"
 
-[node name="TransitionRect" type="ColorRect" parent="."]
+[node name="TransitionRect" type="ColorRect" parent="." unique_id=1508479905]
 visible = false
 layout_mode = 1
 anchors_preset = 15

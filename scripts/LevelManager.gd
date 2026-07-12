@@ -56,62 +56,46 @@ func get_level_count() -> int:
 func create_default_levels() -> void:
 	var level_configs = []
 	
-	if GameSave and GameSave.has_rule("multi_loop"):
+	if _is_advanced_mode():
 		level_configs = [
-			{"name": "ふたごやま", "target": [0, 4, 8, 0, 5, 9], "layout_id": 2},
-			{"name": "ダブルトライアングル", "target": [5, 2, 8, 5, 4, 6], "layout_id": 0},
-			{"name": "砂時計", "target": [0, 1, 2, 3, 0, 9, 8, 7], "layout_id": 0},
-			{"name": "メガネ", "target": [2, 1, 0, 9, 2, 3, 5, 8], "layout_id": 0},
-			{"name": "クリスタル", "target": [0, 2, 5, 8, 0, 3, 5, 7], "layout_id": 0},
-			{"name": "クローバー", "target": [5, 4, 6, 5, 2, 8, 5, 0, 9], "layout_id": 0},
-			{"name": "クラウン", "target": [1, 0, 9, 1, 2, 5, 8, 9, 5], "layout_id": 0},
-			{"name": "かざぐるま", "target": [5, 1, 2, 5, 3, 4, 5, 6, 7, 5, 8, 9], "layout_id": 0},
-			{"name": "メビウス", "target": [0, 1, 5, 8, 9, 0, 2, 5, 7, 9], "layout_id": 0},
-			{"name": "タリスマン", "target": [5, 0, 2, 4, 5, 6, 8, 9, 1, 5, 3, 7], "layout_id": 0},
-			{"name": "ギャラクシー", "target": [0, 4, 8, 2, 6, 0, 5, 9, 3, 7, 1, 5], "layout_id": 0},
-			{"name": "スパイダー", "target": [0, 5, 1, 6, 2, 7, 3, 8, 4, 9, 0, 3, 6, 9], "layout_id": 0}
+			{"name": "ふたごやま", "target": [0, 4, 8, 0, 5, 9], "layout_id": 2, "optimal_moves": 2},
+			{"name": "ダブルトライアングル", "target": [5, 2, 8, 5, 4, 6], "layout_id": 0, "optimal_moves": 5},
+			{"name": "砂時計", "target": [0, 1, 2, 3, 0, 9, 8, 7], "layout_id": 0, "optimal_moves": 7},
+			{"name": "メガネ", "target": [2, 1, 0, 9, 2, 3, 5, 8], "layout_id": 0, "optimal_moves": 6},
+			{"name": "クリスタル", "target": [0, 2, 5, 8, 0, 3, 5, 7], "layout_id": 0, "optimal_moves": 6},
+			{"name": "クローバー", "target": [5, 4, 6, 5, 2, 8, 5, 0, 9], "layout_id": 0, "optimal_moves": 4},
+			{"name": "クラウン", "target": [1, 0, 9, 1, 2, 5, 8, 9, 5], "layout_id": 0, "optimal_moves": 5},
+			{"name": "かざぐるま", "target": [5, 1, 2, 5, 3, 4, 5, 6, 7, 5, 8, 9], "layout_id": 0, "optimal_moves": 8},
+			{"name": "メビウス", "target": [0, 1, 5, 8, 9, 0, 2, 5, 7, 9], "layout_id": 0, "optimal_moves": 6},
+			{"name": "タリスマン", "target": [5, 0, 2, 4, 5, 6, 8, 9, 1, 5, 3, 7], "layout_id": 0, "optimal_moves": 7},
+			{"name": "ギャラクシー", "target": [0, 4, 8, 2, 6, 0, 5, 9, 3, 7, 1, 5], "layout_id": 0, "optimal_moves": 8},
+			{"name": "スパイダー", "target": [0, 5, 1, 6, 2, 7, 3, 8, 4, 9, 0, 3, 6, 9], "layout_id": 0, "optimal_moves": 10}
 		]
 	else:
 		level_configs = [
-			# === 入門 (円形レイアウト / 3-4要素) ===
-			{"name": "さんかく", "target": [1, 5, 8], "layout_id": 0},
-			{"name": "リボン", "target": [0, 4, 6, 2], "layout_id": 0},
-			{"name": "ダイヤ", "target": [0, 2, 5, 8], "layout_id": 0},
-			# === 初級 (円形レイアウト / 4-5要素) ===
-			{"name": "いなずま", "target": [1, 7, 3, 5], "layout_id": 0},
-			{"name": "ロケット", "target": [0, 3, 6, 8], "layout_id": 0},
-			# === 中級 (円形レイアウト / 5要素) ===
-			{"name": "ちょうちょ", "target": [1, 5, 9, 2, 8], "layout_id": 0},
-			{"name": "ほし", "target": [0, 6, 2, 8, 4], "layout_id": 0},
-			{"name": "おうち", "target": [0, 2, 3, 7, 8], "layout_id": 0},
-			# === 上級 (円形レイアウト / 多要素) ===
-			{"name": "フラワー", "target": [1, 4, 6, 9, 2, 7, 5, 8, 3, 0], "layout_id": 0},
-			# === ピラミッドレイアウト ===
-			{"name": "ピラミッド-1", "target": [3, 9, 0, 1], "layout_id": 2},
-			{"name": "ピラミッド-2", "target": [0, 3, 5, 6, 8], "layout_id": 2},
-			{"name": "ピラミッド-3", "target": [8, 4, 7, 5, 3, 0, 9, 2, 1], "layout_id": 2}
+			{"name": "さんかく", "target": [1, 5, 8], "layout_id": 0, "optimal_moves": 5},
+			{"name": "リボン", "target": [0, 4, 6, 2], "layout_id": 0, "optimal_moves": 4},
+			{"name": "ダイヤ", "target": [0, 2, 5, 8], "layout_id": 0, "optimal_moves": 4},
+			{"name": "いなずま", "target": [1, 7, 3, 5], "layout_id": 0, "optimal_moves": 6},
+			{"name": "ロケット", "target": [0, 3, 6, 8], "layout_id": 0, "optimal_moves": 6},
+			{"name": "ちょうちょ", "target": [1, 5, 9, 2, 8], "layout_id": 0, "optimal_moves": 5},
+			{"name": "ほし", "target": [0, 6, 2, 8, 4], "layout_id": 0, "optimal_moves": 5},
+			{"name": "おうち", "target": [0, 2, 3, 7, 8], "layout_id": 0, "optimal_moves": 7},
+			{"name": "フラワー", "target": [1, 4, 6, 9, 2, 7, 5, 8, 3, 0], "layout_id": 0, "optimal_moves": 8},
+			{"name": "ラビリンス", "target": [0, 4, 8, 2, 6, 1, 5, 9, 3, 7], "layout_id": 0, "optimal_moves": 6},
+			{"name": "トルネード", "target": [0, 9, 1, 8, 2, 7, 3, 6, 4, 5], "layout_id": 0, "optimal_moves": 8},
+			{"name": "ピラミッド-1", "target": [3, 9, 0, 1], "layout_id": 2, "optimal_moves": 3},
+			{"name": "ピラミッド-2", "target": [0, 3, 5, 6, 8], "layout_id": 2, "optimal_moves": 3},
+			{"name": "ピラミッド-3", "target": [8, 4, 7, 5, 3, 0, 9, 2, 1], "layout_id": 2, "optimal_moves": 7},
+			{"name": "ピラミッド-4", "target": [8, 2, 1, 0, 4, 3, 9, 5, 6], "layout_id": 2, "optimal_moves": 6},
+			{"name": "ピラミッド-5", "target": [0, 3, 4, 6, 9, 2, 1, 7, 5], "layout_id": 2, "optimal_moves": 6}
 		]
-	
-	# 最短手数の再計算と難易度スコアリング
-	var sm = preload("res://scripts/StringManager.gd").new()
-	var init_seq: Array[int] = [0, 4, 5, 9]
-	
+
+	# 難易度スコアリング
+
 	for config in level_configs:
 		var target_seq: Array[int] = []
 		target_seq.assign(config["target"])
-		
-		if config.has("layout_id"):
-			sm.layout_id = config["layout_id"]
-		else:
-			sm.layout_id = 0
-		
-		# 1. 拡張ルール対応済みのStringManagerで最短手数を計算しなおす
-		var om = 0
-		if config.has("optimal_moves"):
-			om = config["optimal_moves"]
-		else:
-			om = sm.calculate_optimal_moves_count(init_seq.duplicate(), target_seq.duplicate())
-			config["optimal_moves"] = om if om > 0 else target_seq.size() # fallback
 		
 		# 2. 難易度計算のための指標を取得
 		var inter = _calculate_intersections(target_seq)
@@ -120,18 +104,19 @@ func create_default_levels() -> void:
 		var stretch = _calculate_stretch(target_seq)
 		
 		# 3. 新しい重み付け（最短手数の重要度を下げ、交点と重ね掛けの重要度を上げる）
-		# 古いスコア: inter*10 + v*3 + stretch*2 + om*1
 		config["score"] = inter * 15.0 + overlaps * 20.0 + v * 3.0 + stretch * 2.0 + float(config["optimal_moves"]) * 0.5
-		
-	# 難易度順に並び替え（丸型レイアウトを先に、その中でスコア順）
+
+	# 難易度順に並び替え（丸型レイアウトを先に、丸型はスコア順、ピラミッドは名前順）
 	level_configs.sort_custom(func(a, b): 
 		var layout_a = a.get("layout_id", 0)
 		var layout_b = b.get("layout_id", 0)
 		if layout_a != layout_b:
 			return layout_a < layout_b
+		if layout_a == 2:
+			return a["name"] < b["name"]
 		return a["score"] < b["score"]
 	)
-	sm.queue_free()
+	
 	
 	level_data_list.clear()
 	for config in level_configs:
@@ -147,9 +132,30 @@ func create_default_levels() -> void:
 		if config.has("optimal_moves"):
 			level.optimal_moves = config["optimal_moves"]
 		
-		if GameSave:
-			level.active_rules = GameSave.active_rules.duplicate()
+		level.active_rules = _get_active_rules()
 		level_data_list.append(level)
+
+func _is_advanced_mode() -> bool:
+	if Engine.has_singleton("GameSave"):
+		var gs = Engine.get_singleton("GameSave")
+		if gs and gs.has_method("has_rule"):
+			return gs.has_rule("multi_loop")
+	if Engine.get_main_loop() and Engine.get_main_loop() is SceneTree and Engine.get_main_loop().root and Engine.get_main_loop().root.is_inside_tree() and Engine.get_main_loop().root.has_node("/root/GameSave"):
+		var gs = Engine.get_main_loop().root.get_node("/root/GameSave")
+		if gs and gs.has_method("has_rule"):
+			return gs.has_rule("multi_loop")
+	return false
+
+func _get_active_rules() -> Dictionary:
+	if Engine.has_singleton("GameSave"):
+		var gs = Engine.get_singleton("GameSave")
+		if gs and "active_rules" in gs and gs.active_rules is Dictionary:
+			return gs.active_rules.duplicate()
+	if Engine.get_main_loop() and Engine.get_main_loop() is SceneTree and Engine.get_main_loop().root and Engine.get_main_loop().root.is_inside_tree() and Engine.get_main_loop().root.has_node("/root/GameSave"):
+		var gs = Engine.get_main_loop().root.get_node("/root/GameSave")
+		if gs and "active_rules" in gs and gs.active_rules is Dictionary:
+			return gs.active_rules.duplicate()
+	return {}
 
 # 交点の数を計算（円形モデルベース）
 func _calculate_intersections(target: Array[int]) -> int:

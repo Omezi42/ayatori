@@ -92,6 +92,9 @@ func _ready() -> void:
 		GameSave.customization_changed.connect(_update_bg_color)
 	_update_bg_color()
 	
+	if SoundManager:
+		SoundManager.play_bgm("bgm_title")
+	
 	# 6. 設定ボタン（右下に控えめに配置）
 	_setup_settings_corner()
 	
@@ -154,23 +157,31 @@ func _setup_settings_corner() -> void:
 	set_vbox.add_theme_constant_override("separation", ThemeConfig.SPACING_SM)
 	settings_panel.add_child(set_vbox)
 	
-	# 音量 (SVGアイコン使用)
-	var vol_label = ThemeConfig.create_icon_label("res://assets/ic_volume.svg", "おんりょう", ThemeConfig.FONT_BODY, 24, ThemeConfig.TEXT_DARK)
-	set_vbox.add_child(vol_label)
+	# BGM音量
+	var bgm_label = ThemeConfig.create_icon_label("res://assets/ic_volume.svg", "BGM", ThemeConfig.FONT_BODY, 24, ThemeConfig.TEXT_DARK)
+	set_vbox.add_child(bgm_label)
 	
-	var vol_slider = HSlider.new()
-	var master_bus = AudioServer.get_bus_index("Master")
-	if master_bus >= 0:
-		vol_slider.value = db_to_linear(AudioServer.get_bus_volume_db(master_bus)) * 100.0
-	else:
-		vol_slider.value = 50
-	vol_slider.value_changed.connect(func(val):
-		var bus_idx = AudioServer.get_bus_index("Master")
-		if bus_idx >= 0:
-			AudioServer.set_bus_volume_db(bus_idx, linear_to_db(val / 100.0))
+	var bgm_slider = HSlider.new()
+	bgm_slider.value = SoundManager.get_bgm_volume() if SoundManager else 80
+	bgm_slider.custom_minimum_size = Vector2(200, 30)
+	bgm_slider.value_changed.connect(func(val):
+		if SoundManager: SoundManager.set_bgm_volume(val)
 	)
-	set_vbox.add_child(vol_slider)
-	ThemeConfig.apply_slider_theme(vol_slider)
+	set_vbox.add_child(bgm_slider)
+	ThemeConfig.apply_slider_theme(bgm_slider)
+	
+	# SE音量
+	var se_label = ThemeConfig.create_icon_label("res://assets/ic_volume.svg", "SE", ThemeConfig.FONT_BODY, 24, ThemeConfig.TEXT_DARK)
+	set_vbox.add_child(se_label)
+	
+	var se_slider = HSlider.new()
+	se_slider.value = SoundManager.get_se_volume() if SoundManager else 80
+	se_slider.custom_minimum_size = Vector2(200, 30)
+	se_slider.value_changed.connect(func(val):
+		if SoundManager: SoundManager.set_se_volume(val)
+	)
+	set_vbox.add_child(se_slider)
+	ThemeConfig.apply_slider_theme(se_slider)
 	
 	# テーマ (SVGアイコン使用)
 	var theme_label = ThemeConfig.create_icon_label("res://assets/ic_palette.svg", "テーマ", ThemeConfig.FONT_BODY, 24, ThemeConfig.TEXT_DARK)
@@ -194,16 +205,23 @@ func _setup_settings_corner() -> void:
 	
 	settings_btn.pressed.connect(func(): 
 		settings_panel.visible = !settings_panel.visible
+		if SoundManager:
+			if settings_panel.visible:
+				SoundManager.play_se("panel_open")
+			else:
+				SoundManager.play_se("panel_close")
 	)
 
 
 
 func _on_start_pressed() -> void:
+	if SoundManager: SoundManager.play_se("button_tap")
 	if FirebaseManager.has_meta("ugc_target"):
 		FirebaseManager.remove_meta("ugc_target")
 	_transition_to_scene("res://scenes/LevelSelect.tscn")
 
 func _on_create_pressed() -> void:
+	if SoundManager: SoundManager.play_se("button_tap")
 	_transition_to_scene("res://scenes/LevelEditor.tscn")
 
 func _transition_to_scene(path: String) -> void:
@@ -218,9 +236,11 @@ func _transition_to_scene(path: String) -> void:
 		get_tree().change_scene_to_file(path)
 
 func _on_search_pressed() -> void:
+	if SoundManager: SoundManager.play_se("button_tap")
 	_transition_to_scene("res://scenes/LevelBrowser.tscn")
 
 func _on_shop_pressed() -> void:
+	if SoundManager: SoundManager.play_se("button_tap")
 	var shop_scene = load("res://scenes/Shop.tscn")
 	if shop_scene:
 		var shop_instance = shop_scene.instantiate()
@@ -307,6 +327,7 @@ func _update_bg_color() -> void:
 		bg.color = GameSave.get_current_bg_color()
 
 func _on_daily_pressed() -> void:
+	if SoundManager: SoundManager.play_se("button_tap")
 	var date_str = Time.get_date_string_from_system()
 	var string_mgr = preload("res://scripts/StringManager.gd").new()
 	
@@ -324,6 +345,7 @@ func _on_daily_pressed() -> void:
 	var target: Array[int] = []
 	var optimal_moves = -1
 	var layout_id = rng.randi_range(0, 2)
+	string_mgr.layout_id = layout_id
 	var initial_seq: Array[int] = [0, 4, 5, 9]
 	
 	var attempts = 0
@@ -360,7 +382,7 @@ func _on_daily_pressed() -> void:
 			continue
 			
 		var moves = string_mgr.calculate_optimal_moves_count(initial_seq, candidate)
-		if moves >= 4 and moves <= 8:
+		if moves >= 3 and moves <= 8:
 			target = candidate
 			optimal_moves = moves
 			break

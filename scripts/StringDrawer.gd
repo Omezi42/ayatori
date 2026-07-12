@@ -88,7 +88,7 @@ func _process(_delta: float) -> void:
 		# ハイライトの更新処理
 		var hover_id = _find_finger_at(current_mouse_pos)
 		if hover_id >= 0 and string_manager.current_string.has(hover_id):
-			if not (GameSave and (GameSave.is_playing_advanced_level or (GameSave.has_method("has_rule") and GameSave.has_rule("multi_loop")))):
+			if not (GameSave and GameSave.has_method("has_rule") and GameSave.has_rule("multi_loop")):
 				hover_id = -1
 			
 		if hover_id != current_highlighted_finger_id:
@@ -169,7 +169,7 @@ func _get_actual_points(arr: Array[int]) -> Array[Vector2]:
 		var pos = finger_positions[f_id]
 		var is_advanced = false
 		if GameSave:
-			is_advanced = GameSave.is_playing_advanced_level or (GameSave.has_method("has_rule") and GameSave.has_rule("multi_loop"))
+			is_advanced = GameSave.has_method("has_rule") and GameSave.has_rule("multi_loop")
 		if is_advanced:
 			if not usage_counts.has(f_id):
 				usage_counts[f_id] = 0
@@ -289,7 +289,7 @@ func _end_drag(mouse_pos: Vector2) -> void:
 		# すでにその指に糸が掛かっていない場合のみフック
 		var is_advanced = false
 		if GameSave:
-			is_advanced = GameSave.is_playing_advanced_level or (GameSave.has_method("has_rule") and GameSave.has_rule("multi_loop"))
+			is_advanced = GameSave.has_method("has_rule") and GameSave.has_rule("multi_loop")
 		if not string_manager.current_string.has(dropped_finger_id) or is_advanced:
 			segment_dropped_on_finger.emit(dragging_segment_index, dropped_finger_id)
 	

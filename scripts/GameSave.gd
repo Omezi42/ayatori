@@ -19,6 +19,10 @@ var active_rules: Dictionary = {}
 var is_playing_advanced_level: bool = false
 var playing_active_rules: Dictionary = {}
 
+var master_volume: float = 80.0
+var bgm_volume: float = 80.0
+var se_volume: float = 80.0
+
 
 const PIN_ITEMS = [
 	{"id": 0, "name": "パステルピンク", "price": 0, "color": Color("#FFB6C1"), "shine": Color(1, 1, 1, 0.6)},
@@ -74,7 +78,10 @@ func save_data() -> void:
 		"unlocked_strings": unlocked_strings,
 		"current_string": current_string,
 		"is_advanced_mode": is_advanced_mode,
-		"active_rules": active_rules
+		"active_rules": active_rules,
+		"master_volume": master_volume,
+		"bgm_volume": bgm_volume,
+		"se_volume": se_volume
 	}
 	var file = FileAccess.open(SAVE_PATH, FileAccess.WRITE)
 	if file:
@@ -99,6 +106,9 @@ func load_data() -> void:
 				if json.has("unlocked_strings"): unlocked_strings = json["unlocked_strings"]
 				if json.has("current_string"): current_string = int(json["current_string"])
 				if json.has("is_advanced_mode"): is_advanced_mode = bool(json["is_advanced_mode"])
+				if json.has("master_volume"): master_volume = float(json["master_volume"])
+				if json.has("bgm_volume"): bgm_volume = float(json["bgm_volume"])
+				if json.has("se_volume"): se_volume = float(json["se_volume"])
 				if json.has("active_rules"): 
 					active_rules = json["active_rules"]
 				else:
@@ -285,18 +295,35 @@ func add_settings_to(target: Node) -> void:
 	set_vbox.add_theme_constant_override("separation", ThemeConfig.SPACING_SM)
 	settings_panel.add_child(set_vbox)
 	
-	var vol_label = ThemeConfig.create_icon_label("res://assets/ic_volume.svg", "おんりょう", ThemeConfig.FONT_BODY, 24, ThemeConfig.TEXT_DARK)
-	set_vbox.add_child(vol_label)
+	# BGM音量
+	var bgm_label = ThemeConfig.create_icon_label("res://assets/ic_volume.svg", "BGM", ThemeConfig.FONT_BODY, 24, ThemeConfig.TEXT_DARK)
+	set_vbox.add_child(bgm_label)
 	
-	var vol_slider = HSlider.new()
-	var master_bus = AudioServer.get_bus_index("Master")
-	if master_bus >= 0:
-		vol_slider.value = db_to_linear(AudioServer.get_bus_volume_db(master_bus)) * 100.0
-	else:
-		vol_slider.value = 50
-	vol_slider.value_changed.connect(_on_volume_changed)
-	set_vbox.add_child(vol_slider)
-	ThemeConfig.apply_slider_theme(vol_slider)
+	var bgm_slider = HSlider.new()
+	bgm_slider.value = SoundManager.get_bgm_volume() if SoundManager else bgm_volume
+	bgm_slider.custom_minimum_size = Vector2(200, 30)
+	bgm_slider.value_changed.connect(func(val):
+		bgm_volume = val
+		if SoundManager: SoundManager.set_bgm_volume(val)
+		save_data()
+	)
+	set_vbox.add_child(bgm_slider)
+	ThemeConfig.apply_slider_theme(bgm_slider)
+	
+	# SE音量
+	var se_label = ThemeConfig.create_icon_label("res://assets/ic_volume.svg", "SE", ThemeConfig.FONT_BODY, 24, ThemeConfig.TEXT_DARK)
+	set_vbox.add_child(se_label)
+	
+	var se_slider = HSlider.new()
+	se_slider.value = SoundManager.get_se_volume() if SoundManager else se_volume
+	se_slider.custom_minimum_size = Vector2(200, 30)
+	se_slider.value_changed.connect(func(val):
+		se_volume = val
+		if SoundManager: SoundManager.set_se_volume(val)
+		save_data()
+	)
+	set_vbox.add_child(se_slider)
+	ThemeConfig.apply_slider_theme(se_slider)
 	
 	var theme_label = ThemeConfig.create_icon_label("res://assets/ic_palette.svg", "テーマ", ThemeConfig.FONT_BODY, 24, ThemeConfig.TEXT_DARK)
 	set_vbox.add_child(theme_label)
@@ -327,6 +354,7 @@ func add_settings_to(target: Node) -> void:
 	ThemeConfig.apply_button_theme(shop_btn, shop_style_norm, shop_style_press)
 	ThemeConfig.setup_button_animations(shop_btn)
 	shop_btn.pressed.connect(func():
+		if SoundManager: SoundManager.play_se("button_tap")
 		settings_panel.visible = false
 		var shop_scene = load("res://scenes/Shop.tscn")
 		if shop_scene:
@@ -362,11 +390,21 @@ func add_settings_to(target: Node) -> void:
 	settings_btn.position = Vector2(1180, 640)
 	settings_btn.pressed.connect(func(): 
 		settings_panel.visible = !settings_panel.visible
+		if SoundManager:
+			if settings_panel.visible:
+				SoundManager.play_se("panel_open")
+			else:
+				SoundManager.play_se("panel_close")
 	)
 	
 	target.add_child(settings_btn)
 
 func _on_volume_changed(val: float) -> void:
-	var bus_idx = AudioServer.get_bus_index("Master")
-	if bus_idx >= 0:
-		AudioServer.set_bus_volume_db(bus_idx, linear_to_db(val / 100.0))
+	master_volume = val
+	if SoundManager:
+		SoundManager.set_master_volume(val)
+	else:
+		var bus_idx = AudioServer.get_bus_index("Master")
+		if bus_idx >= 0:
+			AudioServer.set_bus_volume_db(bus_idx, linear_to_db(val / 100.0))
+	save_data()

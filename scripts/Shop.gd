@@ -68,6 +68,7 @@ func _ready() -> void:
 	close_btn.add_theme_constant_override("icon_max_width", 20)
 	ThemeConfig.setup_button_animations(close_btn)
 	close_btn.pressed.connect(func():
+		if SoundManager: SoundManager.play_se("panel_close")
 		hide()
 		closed.emit()
 	)
@@ -75,7 +76,10 @@ func _ready() -> void:
 	# タブボタンのセットアップ
 	for i in range(tab_buttons.size()):
 		var btn = tab_buttons[i] as Button
-		btn.pressed.connect(func(): _select_tab(i))
+		btn.pressed.connect(func():
+			if SoundManager: SoundManager.play_se("button_tap")
+			_select_tab(i)
+		)
 		ThemeConfig.setup_button_animations(btn)
 	
 	if GameSave:
@@ -85,6 +89,7 @@ func _ready() -> void:
 
 func _on_dim_input(event: InputEvent) -> void:
 	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT and event.pressed:
+		if SoundManager: SoundManager.play_se("panel_close")
 		hide()
 		closed.emit()
 
@@ -279,6 +284,7 @@ func _create_item_card(item: Dictionary, category: String) -> void:
 		ThemeConfig.apply_button_theme(btn, style_norm, style_press)
 		ThemeConfig.setup_button_animations(btn)
 		btn.pressed.connect(func():
+			if SoundManager: SoundManager.play_se("button_tap")
 			GameSave.equip_item(category, item["id"])
 		)
 	else:
@@ -301,6 +307,7 @@ func _create_item_card(item: Dictionary, category: String) -> void:
 			ThemeConfig.setup_button_animations(btn)
 			btn.pressed.connect(func():
 				if GameSave.buy_item(category, item["id"], price):
+					if SoundManager: SoundManager.play_se("star_get")
 					GameSave.equip_item(category, item["id"])
 			)
 		else:

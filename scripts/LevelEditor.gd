@@ -8,6 +8,8 @@ class_name LevelEditor extends Node
 var title_input: LineEdit
 
 func _ready() -> void:
+	if SoundManager:
+		SoundManager.play_bgm("bgm_gameplay")
 	if GameSave:
 		GameSave.is_playing_advanced_level = false
 		GameSave.customization_changed.connect(_update_bg_color)
@@ -293,7 +295,13 @@ func _on_dialog_confirmed() -> void:
 	if ui_manager and ui_manager.share_button:
 		ui_manager.share_button.text = " 発行中... "
 		ui_manager.share_button.disabled = true
-	FirebaseManager.save_level(title, string_manager.current_string if string_manager else [], layout_id)
+	var optimal_moves = -1
+	if string_manager and string_manager.has_method("calculate_optimal_moves_count"):
+		var old_layout = string_manager.layout_id
+		string_manager.layout_id = layout_id
+		optimal_moves = string_manager.calculate_optimal_moves_count(current_init, string_manager.current_string)
+		string_manager.layout_id = old_layout
+	FirebaseManager.save_level(title, string_manager.current_string if string_manager else [], layout_id, optimal_moves)
 
 func _on_save_completed(code: String) -> void:
 	if ui_manager and ui_manager.share_button:

@@ -11,13 +11,23 @@ var _hint_cache: Dictionary = {}
 var _hint_cache_mutex: Mutex = Mutex.new()
 var layout_id: int = 0
 var _sub_edges_cache: Dictionary = {}
+var _pair_mask_cache: Dictionary = {}
 var _cached_target_string: Array[int] = []
 var _cached_target_edges: Array = []
+var _cached_target_mask: int = -1
 
 signal string_changed
 
 func _ready() -> void:
 	pass
+
+func _get_sound_manager() -> Node:
+	if Engine.has_singleton("SoundManager"):
+		return Engine.get_singleton("SoundManager")
+	var loop = Engine.get_main_loop()
+	if loop is SceneTree and loop.root and loop.root.has_node("SoundManager"):
+		return loop.root.get_node("SoundManager")
+	return null
 
 # 現在の手数を取得する（historyのサイズ＝操作回数）
 func get_move_count() -> int:
@@ -32,20 +42,23 @@ func save_history() -> void:
 func hook_finger(segment_index: int, finger_id: int) -> void:
 	save_history()
 	current_time_counter += 1
-	# segment_index と segment_index+1 の間に finger_id を挿入
 	current_string.insert(segment_index + 1, finger_id)
 	hook_times.insert(segment_index + 1, current_time_counter)
+	var sm = _get_sound_manager()
+	if sm:
+		sm.play_se("string_hook")
 	string_changed.emit()
 
 # 指定の指から糸を外す
 func unhook_finger(index: int) -> void:
-	# 糸が3本未満になる場合は外せないようにする（三角形が最小構成）
 	if current_string.size() <= 3:
 		return
-	
 	save_history()
 	current_string.remove_at(index)
 	hook_times.remove_at(index)
+	var sm = _get_sound_manager()
+	if sm:
+		sm.play_se("string_unhook")
 	string_changed.emit()
 
 # 1手戻る
@@ -53,6 +66,9 @@ func undo() -> void:
 	if history.size() > 0:
 		current_string = history.pop_back()
 		hook_times = history_hook_times.pop_back()
+		var sm = _get_sound_manager()
+		if sm:
+			sm.play_se("undo")
 		string_changed.emit()
 
 # リセット
@@ -64,6 +80,9 @@ func reset_to_initial(initial_state: Array[int]) -> void:
 	current_time_counter = 0
 	for i in range(current_string.size()):
 		hook_times.append(0)
+	var sm = _get_sound_manager()
+	if sm:
+		sm.play_se("reset")
 	string_changed.emit()
 
 # 特定の指に対して一番最後に掛けられた要素のインデックスを返す
@@ -77,11 +96,48 @@ func get_latest_index_of_finger(finger_id: int) -> int:
 				latest_idx = i
 	return latest_idx
 
-# 現在の配列が正解配列と一致するか判定する（シフト、逆順対応）
+# 現在の配列が正解配列と一致するか判定する
 func check_clear() -> bool:
 	return is_state_matching_target(current_string, target_string)
 
-func get_edge_set(seq: Array[int]) -> Array:
+# 高速ビットマスクインデクシング (45通りのペアを 64bit int の各ビットに割り当て)
+func _get_bit_index(a: int, b: int) -> int:
+	if a > b:
+		var tmp = a
+		a = b
+		b = tmp
+	return a * 10 - (a * (a + 1)) / 2 + (b - a - 1)
+
+func _get_pair_mask(u: int, v: int) -> int:
+	var cache_key = layout_id * 100 + u * 10 + v
+	if _pair_mask_cache.has(cache_key):
+		return _pair_mask_cache[cache_key]
+	
+	var positions = PinLayout.get_positions(layout_id)
+	var sub_edges = _get_sub_edges(u, v, positions)
+	var mask: int = 0
+	for s in sub_edges:
+		var parts = s.split("-")
+		var a = int(parts[0])
+		var b = int(parts[1])
+		var bit_idx = _get_bit_index(a, b)
+		mask |= (1 << bit_idx)
+	_pair_mask_cache[cache_key] = mask
+	return mask
+
+func get_edge_mask(seq: Array) -> int:
+	if seq.is_empty(): return 0
+	var norm = _normalize_sequence(seq)
+	if norm.is_empty(): return 0
+	var mask: int = 0
+	for i in range(norm.size()):
+		var u = norm[i]
+		var v = norm[(i + 1) % norm.size()]
+		if u != v:
+			mask |= _get_pair_mask(u, v)
+	return mask
+
+func get_edge_set(seq: Array) -> Array:
 	if seq.is_empty(): return []
 	var norm = _normalize_sequence(seq)
 	if norm.is_empty(): return []
@@ -91,7 +147,7 @@ func get_edge_set(seq: Array[int]) -> Array:
 	for i in range(norm.size()):
 		var u = norm[i]
 		var v = norm[(i + 1) % norm.size()]
-		if u != v: # 無視（同じ点への自己ループは描画されない）
+		if u != v:
 			var sub_edges = _get_sub_edges(u, v, positions)
 			for edge_key in sub_edges:
 				edges[edge_key] = true
@@ -119,15 +175,12 @@ func _get_sub_edges(u: int, v: int, positions: Array[Vector2]) -> Array[String]:
 			points_on_line.append(w)
 			continue
 			
-		# Bounding box check
 		if min(pu.x, pv.x) <= pw.x and pw.x <= max(pu.x, pv.x) and \
 		   min(pu.y, pv.y) <= pw.y and pw.y <= max(pu.y, pv.y):
-			# Cross product check for collinearity
 			var cross = (pw.x - pu.x) * (pv.y - pu.y) - (pw.y - pu.y) * (pv.x - pu.x)
 			if abs(cross) < 0.1:
 				points_on_line.append(w)
 				
-	# Sort points_on_line by distance to pu
 	points_on_line.sort_custom(func(a, b): return pu.distance_squared_to(positions[a]) < pu.distance_squared_to(positions[b]))
 	
 	var sub_edges: Array[String] = []
@@ -140,62 +193,71 @@ func _get_sub_edges(u: int, v: int, positions: Array[Vector2]) -> Array[String]:
 	_sub_edges_cache[cache_key] = sub_edges
 	return sub_edges
 
+func _get_state_key(state: Array[int], is_advanced: bool) -> int:
+	var mask = get_edge_mask(state)
+	if is_advanced:
+		return mask
+	var pin_bits = 0
+	for p in state:
+		pin_bits |= (1 << p)
+	return (mask << 10) | pin_bits
+
 func is_state_matching_target(state: Array[int], target: Array[int]) -> bool:
 	if target.is_empty() or state.is_empty():
 		return false
 	
-	var edges_s = get_edge_set(state)
-	var edges_t: Array = []
-	if target == _cached_target_string:
-		edges_t = _cached_target_edges
+	var mask_s = get_edge_mask(state)
+	var mask_t: int = 0
+	if target == _cached_target_string and _cached_target_mask != -1:
+		mask_t = _cached_target_mask
 	else:
-		edges_t = get_edge_set(target)
+		mask_t = get_edge_mask(target)
 		_cached_target_string = target.duplicate()
-		_cached_target_edges = edges_t
+		_cached_target_mask = mask_t
 	
-	if edges_s.size() == 0 or edges_t.size() == 0:
-		return false
-		
-	if edges_s.size() != edges_t.size():
-		return false
-		
-	for i in range(edges_s.size()):
-		if edges_s[i] != edges_t[i]:
-			return false
-			
-	return true
+	return mask_s == mask_t and mask_s != 0
 
-# 閉路を表す配列を正規化する（最初と最後が同じなら最後を取り除く）
-func _normalize_sequence(seq: Array[int]) -> Array[int]:
-	var res = seq.duplicate()
+func _normalize_sequence(seq: Array) -> Array[int]:
+	var res: Array[int] = []
+	for x in seq:
+		res.append(int(x))
 	if res.size() > 1 and res[0] == res[res.size() - 1]:
 		res.pop_back()
 	return res
 
+func _get_canonical_key(seq: Array) -> String:
+	var norm = _normalize_sequence(seq)
+	if norm.is_empty():
+		return "[]"
+	var n = norm.size()
+	var best_key = str(norm)
+	for i in range(n):
+		var shifted: Array[int] = []
+		for j in range(n):
+			shifted.append(norm[(i + j) % n])
+		var shifted_str = str(shifted)
+		if shifted_str < best_key:
+			best_key = shifted_str
+		var reversed_shifted = shifted.duplicate()
+		reversed_shifted.reverse()
+		var reversed_str = str(reversed_shifted)
+		if reversed_str < best_key:
+			best_key = reversed_str
+	return best_key
 
-
-# ヒント用：両方向BFS＋ヒューリスティック枝刈り＋正規化キャッシュによる高速かつ完全な最短ルート探索
-# 次に行うべき最適アクションのディクショナリを返す
-# 返り値の例:
-# 掛ける場合: {"type": "hook", "finger": X, "segment_index": Y}
-# 外す場合: {"type": "unhook", "finger": X, "index": Y}
-# 一致している場合: {}
-# 高速ヒント判定：キャッシュまたは1手先読みで求まる場合は即座に返し、重いBFS探索が必要な場合は {"_need_deep_search": true} を返す
+# ============================================================
+# ヒント用：高速ビットマスク双方向BFS＋キャッシュ
+# ============================================================
 func get_quick_hint(current: Array[int], target: Array[int]) -> Dictionary:
 	if current.is_empty() or target.is_empty() or is_state_matching_target(current, target):
 		return {}
 		
-	var current_norm = _normalize_sequence(current)
-	var target_norm = _normalize_sequence(target)
-	if current_norm.size() == 0 or target_norm.size() == 0:
+	var current_mask = get_edge_mask(current)
+	var target_mask = get_edge_mask(target)
+	if current_mask == target_mask:
 		return {}
 		
-	var current_key = _get_canonical_key(current_norm)
-	var target_key = _get_canonical_key(target_norm)
-	if current_key == target_key:
-		return {}
-		
-	var cache_key = current_key + "->" + target_key
+	var cache_key = str(layout_id) + ":" + str(current_mask) + "->" + str(target_mask)
 	
 	_hint_cache_mutex.lock()
 	var has_cached = _hint_cache.has(cache_key)
@@ -210,17 +272,12 @@ func get_heuristic_hint_async(current: Array[int], target: Array[int]) -> Dictio
 	if current.is_empty() or target.is_empty() or is_state_matching_target(current, target):
 		return {}
 		
-	var current_norm = _normalize_sequence(current)
-	var target_norm = _normalize_sequence(target)
-	if current_norm.size() == 0 or target_norm.size() == 0:
+	var current_mask = get_edge_mask(current)
+	var target_mask = get_edge_mask(target)
+	if current_mask == target_mask:
 		return {}
 		
-	var current_key = _get_canonical_key(current_norm)
-	var target_key = _get_canonical_key(target_norm)
-	if current_key == target_key:
-		return {}
-		
-	var cache_key = current_key + "->" + target_key
+	var cache_key = str(layout_id) + ":" + str(current_mask) + "->" + str(target_mask)
 	
 	_hint_cache_mutex.lock()
 	var has_cached = _hint_cache.has(cache_key)
@@ -229,175 +286,118 @@ func get_heuristic_hint_async(current: Array[int], target: Array[int]) -> Dictio
 	if has_cached:
 		return cached_val
 		
-	# 1. 1手先読みチェック (0次探索: 1手でクリアできるなら即座に返す)
-	var next_moves = _generate_next_moves(current_norm)
+	# 1. 1手先読みチェック
+	var next_moves = _generate_next_moves(current)
 	for move_data in next_moves:
-		if _get_canonical_key(move_data["next_state"]) == target_key:
+		if get_edge_mask(move_data["next_state"]) == target_mask:
 			_hint_cache_mutex.lock()
 			_hint_cache[cache_key] = move_data["move"]
 			_hint_cache_mutex.unlock()
 			return move_data["move"]
 			
-	# 2. 両方向BFS (Bidirectional BFS) による最短手順の探索
-	# フロンティア最小展開 + ヒューリスティック下界枝刈りで計算量を極限まで削減
-	var best_move = await _search_bidirectional_bfs_async(current_norm, target_norm, target_key)
+	# 2. 高速ビットマスク双方向BFSによる最短手の1手目を探索
+	var best_move = await _search_hint_bfs_bidirectional_async(current, target)
 	if not best_move.is_empty():
 		_hint_cache_mutex.lock()
 		_hint_cache[cache_key] = best_move
 		_hint_cache_mutex.unlock()
 		return best_move
 		
-	# 3. 万が一BFSの探索上限を超えた場合のフォールバック（スマートグリーディ）
-	var fallback_move = _fallback_greedy_hint(current_norm, target_norm)
+	# 3. BFS上限を超えた場合のスマートフォールバック
+	var fallback_move = _fallback_greedy_hint(current, target)
 	_hint_cache_mutex.lock()
 	_hint_cache[cache_key] = fallback_move
 	_hint_cache_mutex.unlock()
 	return fallback_move
 
-# 状態の正規化キー（エッジセットに基づく最小表現）を取得
-func _get_canonical_key(state: Array[int]) -> String:
-	var edges = get_edge_set(state)
-	return ",".join(edges)
+func _count_bits(n: int) -> int:
+	var count = 0
+	while n != 0:
+		n &= n - 1
+		count += 1
+	return count
 
-# 両方向BFS探索による最短手生成
-func _search_bidirectional_bfs_async(start_state: Array[int], target_state: Array[int], target_key: String) -> Dictionary:
-	var is_advanced = false
-	if Engine.has_singleton("GameSave") and Engine.get_singleton("GameSave").has_method("has_rule"):
-		is_advanced = Engine.get_singleton("GameSave").has_rule("multi_loop")
-		
-	var max_depth_per_side = 8 if is_advanced else 8
-	var max_nodes = 50000
+func _heuristic_distance_mask(mask1: int, mask2: int) -> int:
+	var missing = _count_bits(mask2 & ~mask1)
+	var extra = _count_bits(mask1 & ~mask2)
+	return max(missing, extra)
+
+# 双方向BFSによる超高速・正確なヒント探索
+func _search_hint_bfs_bidirectional_async(start_state: Array[int], target_state: Array[int], override_is_advanced: int = -1) -> Dictionary:
+	var max_depth = 16
+	var max_nodes = 600000
 	var nodes_expanded = 0
 	var start_time_msec = Time.get_ticks_msec()
-	var max_time_msec = 5000 if OS.has_feature("web") else 5000
+	var max_time_msec = 5000
 	var frame_start_msec = Time.get_ticks_msec()
 	
-	var start_key = _get_canonical_key(start_state)
-	
-	var queue_forward: Array[Dictionary] = []
-	var queue_backward: Array[Dictionary] = []
-	
-	# visited_forward: key -> {"depth": int, "first_move": Dictionary}
-	var visited_forward = {}
-	# visited_backward: key -> depth (int)
-	var visited_backward = {}
-	
-	visited_forward[start_key] = {"depth": 0, "first_move": {}}
-	queue_forward.push_back({"state": start_state, "depth": 0, "first_move": {}})
-	
-	visited_backward[target_key] = 0
-	queue_backward.push_back({"state": target_state, "depth": 0})
-	
-	while queue_forward.size() > 0 and queue_backward.size() > 0:
-		var size_f = queue_forward.size()
-		var size_b = queue_backward.size()
+	var is_advanced = _get_is_advanced() if override_is_advanced == -1 else (override_is_advanced == 1)
+	var start_mask = get_edge_mask(start_state)
+	var target_mask = get_edge_mask(target_state)
+	if start_mask == target_mask:
+		return {}
 		
-		var best_total_depth = 999999
-		var best_found_move = {}
-		
-		if size_f <= size_b:
-			for _i in range(size_f):
-				if nodes_expanded >= max_nodes or (Time.get_ticks_msec() - start_time_msec > max_time_msec):
-					return best_found_move if not best_found_move.is_empty() else {}
-				if nodes_expanded % 100 == 0 and Time.get_ticks_msec() - frame_start_msec > 3:
-					await Engine.get_main_loop().process_frame
-					frame_start_msec = Time.get_ticks_msec()
-					
-				var curr = queue_forward.pop_front()
-				nodes_expanded += 1
-				var c_state: Array[int] = curr["state"]
-				var c_depth: int = curr["depth"]
-				var f_move: Dictionary = curr["first_move"]
-				
-				if c_depth >= max_depth_per_side:
-					continue
-				if c_depth + _heuristic_distance(c_state, target_state) > max_depth_per_side * 2:
-					continue
-					
-				var next_moves = _generate_next_moves(c_state)
-				for move_data in next_moves:
-					var nxt_state: Array[int] = move_data["next_state"]
-					var nxt_key = _get_canonical_key(nxt_state)
-					var move_to_record = f_move if not f_move.is_empty() else move_data["move"]
-					
-					if visited_backward.has(nxt_key):
-						var total_d = c_depth + 1 + visited_backward[nxt_key]
-						if total_d < best_total_depth:
-							best_total_depth = total_d
-							best_found_move = move_to_record
-					else:
-						if not visited_forward.has(nxt_key):
-							visited_forward[nxt_key] = {"depth": c_depth + 1, "first_move": move_to_record}
-							queue_forward.push_back({"state": nxt_state, "depth": c_depth + 1, "first_move": move_to_record})
-		else:
-			for _i in range(size_b):
-				if nodes_expanded >= max_nodes or (Time.get_ticks_msec() - start_time_msec > max_time_msec):
-					return best_found_move if not best_found_move.is_empty() else {}
-				if nodes_expanded % 100 == 0 and Time.get_ticks_msec() - frame_start_msec > 3:
-					await Engine.get_main_loop().process_frame
-					frame_start_msec = Time.get_ticks_msec()
-					
-				var curr = queue_backward.pop_front()
-				nodes_expanded += 1
-				var c_state: Array[int] = curr["state"]
-				var c_depth: int = curr["depth"]
-				
-				if c_depth >= max_depth_per_side:
-					continue
-				if c_depth + _heuristic_distance(c_state, start_state) > max_depth_per_side * 2:
-					continue
-					
-				var next_moves = _generate_next_moves(c_state)
-				for move_data in next_moves:
-					var nxt_state: Array[int] = move_data["next_state"]
-					var nxt_key = _get_canonical_key(nxt_state)
-					
-					if visited_forward.has(nxt_key):
-						var total_d = c_depth + 1 + visited_forward[nxt_key]["depth"]
-						if total_d < best_total_depth:
-							best_total_depth = total_d
-							best_found_move = visited_forward[nxt_key]["first_move"]
-					else:
-						if not visited_backward.has(nxt_key):
-							visited_backward[nxt_key] = c_depth + 1
-							queue_backward.push_back({"state": nxt_state, "depth": c_depth + 1})
-							
-		if not best_found_move.is_empty():
-			return best_found_move
+	var start_key = _get_state_key(start_state, is_advanced)
+	var visited = {start_key: true}
+	var visited_history = {}
+	for h in history:
+		visited_history[_get_state_key(h, is_advanced)] = true
+	visited_history[start_key] = true
+	
+	var queue_forward: Array[Array] = [[start_state, 0, {}]]
+	var head_f = 0
+	
+	while head_f < queue_forward.size():
+		if nodes_expanded >= max_nodes or (Time.get_ticks_msec() - start_time_msec > max_time_msec):
+			break
 			
+		if nodes_expanded % 1000 == 0 and Time.get_ticks_msec() - frame_start_msec > 5:
+			if Engine.get_main_loop() and Engine.get_main_loop().has_signal("process_frame"):
+				await Engine.get_main_loop().process_frame
+			frame_start_msec = Time.get_ticks_msec()
+			
+		var curr = queue_forward[head_f]
+		head_f += 1
+		var c_state: Array[int] = curr[0]
+		var c_depth: int = curr[1]
+		var f_move: Dictionary = curr[2]
+		
+		if c_depth >= max_depth:
+			break
+			
+		nodes_expanded += 1
+		for move_data in _generate_next_moves(c_state, override_is_advanced):
+			var nxt_state: Array[int] = move_data["next_state"]
+			var nxt_mask = get_edge_mask(nxt_state)
+			var nxt_key = _get_state_key(nxt_state, is_advanced)
+			if visited_history.has(nxt_key) and nxt_mask != target_mask:
+				continue
+			var new_depth = c_depth + 1
+			var move_to_record = f_move if not f_move.is_empty() else move_data["move"]
+			
+			if nxt_mask == target_mask:
+				return move_to_record
+				
+			if not visited.has(nxt_key):
+				visited[nxt_key] = true
+				queue_forward.push_back([nxt_state, new_depth, move_to_record])
+				
 	return {}
 
-# ヒューリスティック距離（エッジ集合差分による下界推定）
-func _heuristic_distance(state1: Array[int], state2: Array[int]) -> int:
-	var set1 = {}
-	for e in get_edge_set(state1): set1[e] = true
-	var set2 = {}
-	for e in get_edge_set(state2): set2[e] = true
-	
-	var diff1 = 0
-	for e in get_edge_set(state1):
-		if not set2.has(e): diff1 += 1
-	var diff2 = 0
-	for e in get_edge_set(state2):
-		if not set1.has(e): diff2 += 1
-	return diff1 + diff2
-
 # 可能で合法な全ての手と次状態を生成する
-func _generate_next_moves(state: Array[int]) -> Array[Dictionary]:
+func _generate_next_moves(state: Array[int], override_is_advanced: int = -1) -> Array[Dictionary]:
 	var results: Array[Dictionary] = []
 	var state_set = {}
 	for x in state: state_set[x] = true
+	var c_mask = get_edge_mask(state)
 	
-	var is_advanced = false
-	if Engine.has_singleton("GameSave") and Engine.get_singleton("GameSave").has_method("has_rule"):
-		is_advanced = Engine.get_singleton("GameSave").has_rule("multi_loop")
+	var is_advanced = _get_is_advanced() if override_is_advanced == -1 else (override_is_advanced == 1)
 	
 	# 掛ける操作 (hook)
 	var total_fingers = PinLayout.get_positions(layout_id).size()
 	for f in range(total_fingers):
 		if is_advanced or not state_set.has(f):
 			for i in range(state.size()):
-				# 拡張モード時は、隣接する同じ指に掛けるような無意味な操作を枝刈り
 				if is_advanced:
 					var prev_f = state[i]
 					var next_f = state[(i + 1) % state.size()]
@@ -406,7 +406,8 @@ func _generate_next_moves(state: Array[int]) -> Array[Dictionary]:
 						
 				var nxt = state.duplicate()
 				nxt.insert(i + 1, f)
-				results.append({"move": {"type": "hook", "finger": f, "segment_index": i}, "next_state": nxt})
+				if get_edge_mask(nxt) != c_mask:
+					results.append({"move": {"type": "hook", "finger": f, "segment_index": i}, "next_state": nxt})
 				
 	# 外す操作 (unhook)
 	if state.size() > 3:
@@ -414,131 +415,290 @@ func _generate_next_moves(state: Array[int]) -> Array[Dictionary]:
 			var nxt = state.duplicate()
 			var removed = nxt[i]
 			nxt.remove_at(i)
-			results.append({"move": {"type": "unhook", "finger": removed, "index": i}, "next_state": nxt})
+			if get_edge_mask(nxt) != c_mask:
+				results.append({"move": {"type": "unhook", "finger": removed, "index": i}, "next_state": nxt})
 			
 	return results
 
-# BFS上限を超えた場合のスマートなグリーディフォールバック
-func _fallback_greedy_hint(current_norm: Array[int], target_norm: Array[int]) -> Dictionary:
-	var current_set = {}
-	for f in current_norm: current_set[f] = true
-	var target_set = {}
-	for f in target_norm: target_set[f] = true
+func _get_is_advanced() -> bool:
+	if Engine.has_singleton("GameSave"):
+		var gs = Engine.get_singleton("GameSave")
+		if gs and gs.has_method("has_rule"):
+			return gs.has_rule("multi_loop")
+	if Engine.get_main_loop() and Engine.get_main_loop() is SceneTree and Engine.get_main_loop().root and Engine.get_main_loop().root.is_inside_tree() and Engine.get_main_loop().root.has_node("/root/GameSave"):
+		var gs = Engine.get_main_loop().root.get_node("/root/GameSave")
+		if gs and gs.has_method("has_rule"):
+			return gs.has_rule("multi_loop")
+	return false
+
+# ビットマスク差分に基づく最適グリーディフォールバック
+func _fallback_greedy_hint(current: Array[int], target: Array[int]) -> Dictionary:
+	var is_advanced = _get_is_advanced()
+	var current_mask = get_edge_mask(current)
+	var target_mask = get_edge_mask(target)
+	var visited_history = {}
+	for h in history:
+		visited_history[_get_state_key(h, is_advanced)] = true
+	visited_history[_get_state_key(current, is_advanced)] = true
 	
-	var is_advanced = false
-	if Engine.has_singleton("GameSave") and Engine.get_singleton("GameSave").has_method("has_rule"):
-		is_advanced = Engine.get_singleton("GameSave").has_rule("multi_loop")
+	var best_move: Dictionary = {}
+	var best_dist = 999999
 	
-	# 1. 目標にない指があれば外す (非拡張時のみ、または拡張時でも不要な指なら)
-	if current_norm.size() > 3:
-		for i in range(current_norm.size()):
-			if not target_set.has(current_norm[i]):
-				return {"type": "unhook", "finger": current_norm[i], "index": i}
-				
-	# 2. 目標にあるが現在ない指があれば、目標配列で隣接する指の間のセグメントに掛ける
-	# 拡張モードでは、目標配列にあって現在不足しているエッジを構成する指に掛ける
-	for f in target_norm:
-		if is_advanced or not current_set.has(f):
-			var target_idx = target_norm.find(f)
-			var prev_f = target_norm[(target_idx - 1 + target_norm.size()) % target_norm.size()]
-			var next_f = target_norm[(target_idx + 1) % target_norm.size()]
+	for move_data in _generate_next_moves(current):
+		var nxt_state: Array[int] = move_data["next_state"]
+		var nxt_mask = get_edge_mask(nxt_state)
+		var nxt_key = _get_state_key(nxt_state, is_advanced)
+		if visited_history.has(nxt_key) and nxt_mask != target_mask:
+			continue
+		var dist = _heuristic_distance_mask(nxt_mask, target_mask)
+		if dist < best_dist:
+			best_dist = dist
+			best_move = move_data["move"]
 			
-			var best_seg = 0
-			var found_best = false
-			for i in range(current_norm.size()):
-				if current_norm[i] == prev_f or current_norm[(i + 1) % current_norm.size()] == next_f:
-					best_seg = i
-					found_best = true
-					break
-			if found_best and (is_advanced or not current_set.has(f)):
-				return {"type": "hook", "finger": f, "segment_index": best_seg}
-			elif not is_advanced and not current_set.has(f):
-				return {"type": "hook", "finger": f, "segment_index": 0}
-			
-	# 3. 指の種類は合っているが並びが違う場合、適当な指を外して再構成を促す
-	if current_norm.size() > 3:
-		return {"type": "unhook", "finger": current_norm[0], "index": 0}
+	if not best_move.is_empty():
+		return best_move
 		
+	for move_data in _generate_next_moves(current):
+		return move_data["move"]
+		
+	if current.size() > 3:
+		return {"type": "unhook", "finger": current[0], "index": 0}
 	return {}
 
-# 最短手数を計算して返す（双方向BFS）
-func calculate_optimal_moves_count(start_state: Array[int], target_state: Array[int]) -> int:
-	var is_advanced = false
-	if Engine.has_singleton("GameSave") and Engine.get_singleton("GameSave").has_method("has_rule"):
-		is_advanced = Engine.get_singleton("GameSave").has_rule("multi_loop")
-		
-	var max_depth_per_side = 8 if is_advanced else 8
-	var max_nodes = 50000
-	var nodes_expanded = 0
-	var start_time_msec = Time.get_ticks_msec()
-	var max_time_msec = 150 if OS.has_feature("web") else 2000
-	
-	var start_key = _get_canonical_key(start_state)
-	var target_key = _get_canonical_key(target_state)
-	if start_key == target_key:
+# ============================================================
+# 最短手数計算（高速インライン合流探索 BFS）
+# ============================================================
+func calculate_optimal_moves(start_state: Array[int], target_state: Array[int], override_is_advanced: int = -1, max_time_msec: int = 2500) -> int:
+	return calculate_optimal_moves_count(start_state, target_state, override_is_advanced, max_time_msec)
+
+func calculate_optimal_moves_count(start_state: Array[int], target_state: Array[int], override_is_advanced: int = -1, max_time_msec: int = 2500) -> int:
+	var start_mask = get_edge_mask(start_state)
+	var target_mask = get_edge_mask(target_state)
+	if start_mask == target_mask:
 		return 0
+	
+	var is_advanced = _get_is_advanced() if override_is_advanced == -1 else (override_is_advanced == 1)
+	var total_fingers = PinLayout.get_positions(layout_id).size()
+	
+	var candidate_fingers = []
+	if total_fingers <= 10:
+		for f in range(total_fingers): candidate_fingers.append(f)
+	else:
+		var active_pins = {}
+		for p in start_state: active_pins[p] = true
+		for p in target_state: active_pins[p] = true
+		for p in active_pins.keys():
+			var px = p % 10
+			var py = p / 10
+			for dy in range(-3, 4):
+				for dx in range(-3, 4):
+					var nx = px + dx
+					var ny = py + dy
+					if nx >= 0 and nx < 10 and ny >= 0 and ny < 10:
+						candidate_fingers.append(ny * 10 + nx)
+		# 重複削除とソート
+		var uniq = {}
+		for f in candidate_fingers: uniq[f] = true
+		candidate_fingers = uniq.keys()
+		candidate_fingers.sort()
+	
+	var _fast_table = []
+	for u in range(total_fingers):
+		var row = []
+		for v in range(total_fingers):
+			row.append(_get_pair_mask(u, v))
+		_fast_table.append(row)
 		
-	var queue_forward: Array[Array] = []
-	var queue_backward: Array[Array] = []
+	var start_key = _get_state_key(start_state, is_advanced)
+	var visited = {start_key: 0}
+	var queue_forward: Array[Array] = [[start_state, 0, start_mask]]
+	var head_f = 0
+	var start_time_msec = Time.get_ticks_msec()
 	
-	var visited_forward = {}
-	var visited_backward = {}
+	var visited_backward = {_get_state_key(target_state, is_advanced): 0}
+	var queue_backward: Array[Array] = [[target_state, 0, target_mask]]
+	var head_b = 0
+	var best_moves = 999
 	
-	visited_forward[start_key] = 0
-	queue_forward.push_back([start_state, 0])
-	
-	visited_backward[target_key] = 0
-	queue_backward.push_back([target_state, 0])
-	
-	while queue_forward.size() > 0 and queue_backward.size() > 0:
-		var size_f = queue_forward.size()
-		var size_b = queue_backward.size()
-		
-		if size_f <= size_b:
-			for _i in range(size_f):
-				if nodes_expanded >= max_nodes or (nodes_expanded % 100 == 0 and Time.get_ticks_msec() - start_time_msec > max_time_msec):
-					return 999
-				var curr = queue_forward.pop_front()
-				nodes_expanded += 1
-				var c_state: Array[int] = curr[0]
-				var c_depth: int = curr[1]
+	while head_f < queue_forward.size() or head_b < queue_backward.size():
+		if (head_f + head_b) % 500 == 0 and Time.get_ticks_msec() - start_time_msec > max_time_msec:
+			break
+			
+		# ---- 順方向1ステップ ----
+		if head_f < queue_forward.size():
+			var curr = queue_forward[head_f]
+			head_f += 1
+			var c_state: Array[int] = curr[0]
+			var c_depth: int = curr[1]
+			var c_mask: int = curr[2]
+			
+			if c_depth >= best_moves or c_depth >= 16:
+				continue
 				
-				if c_depth >= max_depth_per_side:
-					continue
-				if c_depth + _heuristic_distance(c_state, target_state) > max_depth_per_side * 2:
-					continue
-					
-				for move_data in _generate_next_moves(c_state):
-					var nxt_state: Array[int] = move_data["next_state"]
-					var nxt_key = _get_canonical_key(nxt_state)
-					
-					if visited_backward.has(nxt_key):
-						return c_depth + 1 + visited_backward[nxt_key]
-					if not visited_forward.has(nxt_key):
-						visited_forward[nxt_key] = c_depth + 1
-						queue_forward.push_back([nxt_state, c_depth + 1])
-		else:
-			for _i in range(size_b):
-				if nodes_expanded >= max_nodes or (nodes_expanded % 100 == 0 and Time.get_ticks_msec() - start_time_msec > max_time_msec):
-					return 999
-				var curr = queue_backward.pop_front()
-				nodes_expanded += 1
-				var c_state: Array[int] = curr[0]
-				var c_depth: int = curr[1]
+			if queue_forward.size() > head_f and queue_forward[head_f][1] >= best_moves:
+				return best_moves
 				
-				if c_depth >= max_depth_per_side:
-					continue
-				if c_depth + _heuristic_distance(c_state, start_state) > max_depth_per_side * 2:
-					continue
-					
-				for move_data in _generate_next_moves(c_state):
-					var nxt_state: Array[int] = move_data["next_state"]
-					var nxt_key = _get_canonical_key(nxt_state)
-					
-					if visited_forward.has(nxt_key):
-						return c_depth + 1 + visited_forward[nxt_key]
-					if not visited_backward.has(nxt_key):
-						visited_backward[nxt_key] = c_depth + 1
-						queue_backward.push_back([nxt_state, c_depth + 1])
+			var sz = c_state.size()
+			var state_set = {}
+			if not is_advanced:
+				for x in c_state: state_set[x] = true
+				
+			# 掛ける (hook)
+			for f in candidate_fingers:
+				if is_advanced or not state_set.has(f):
+					for i in range(sz):
+						if is_advanced:
+							var prev_f = c_state[i]
+							var next_f = c_state[(i + 1) % sz]
+							if f == prev_f or f == next_f:
+								continue
+						var nxt = c_state.duplicate()
+						nxt.insert(i + 1, f)
 						
-	return -1
+						var sz_n = nxt.size()
+						if sz_n > 1 and nxt[0] == nxt[sz_n - 1]:
+							sz_n -= 1
+						var nxt_mask: int = 0
+						for k in range(sz_n):
+							nxt_mask |= _fast_table[nxt[k]][nxt[(k + 1) % sz_n]]
+							
+						if nxt_mask == c_mask:
+							continue
+						var new_depth = c_depth + 1
+						if nxt_mask == target_mask:
+							best_moves = min(best_moves, new_depth)
+							continue
+							
+						var nxt_key: int = nxt_mask
+						if not is_advanced:
+							var pin_bits: int = 0
+							for p in nxt: pin_bits |= (1 << p)
+							nxt_key = (nxt_mask << 10) | pin_bits
+							
+						if visited_backward.has(nxt_key):
+							best_moves = min(best_moves, new_depth + visited_backward[nxt_key])
+						if not visited.has(nxt_key) or visited[nxt_key] > new_depth:
+							visited[nxt_key] = new_depth
+							if new_depth < best_moves:
+								queue_forward.push_back([nxt, new_depth, nxt_mask])
+								
+			# 外す (unhook)
+			if sz > 3:
+				for i in range(sz):
+					var nxt = c_state.duplicate()
+					nxt.remove_at(i)
+					
+					var sz_n = nxt.size()
+					if sz_n > 1 and nxt[0] == nxt[sz_n - 1]:
+						sz_n -= 1
+					var nxt_mask: int = 0
+					for k in range(sz_n):
+						nxt_mask |= _fast_table[nxt[k]][nxt[(k + 1) % sz_n]]
+						
+					if nxt_mask == c_mask:
+						continue
+					var new_depth = c_depth + 1
+					if nxt_mask == target_mask:
+						best_moves = min(best_moves, new_depth)
+						continue
+						
+					var nxt_key: int = nxt_mask
+					if not is_advanced:
+						var pin_bits: int = 0
+						for p in nxt: pin_bits |= (1 << p)
+						nxt_key = (nxt_mask << 10) | pin_bits
+						
+					if visited_backward.has(nxt_key):
+						best_moves = min(best_moves, new_depth + visited_backward[nxt_key])
+					if not visited.has(nxt_key) or visited[nxt_key] > new_depth:
+						visited[nxt_key] = new_depth
+						if new_depth < best_moves:
+							queue_forward.push_back([nxt, new_depth, nxt_mask])
+							
+		# ---- 逆方向1ステップ ----
+		if head_b < queue_backward.size():
+			var curr = queue_backward[head_b]
+			head_b += 1
+			var c_state: Array[int] = curr[0]
+			var c_depth: int = curr[1]
+			var c_mask: int = curr[2]
+			
+			if c_depth >= best_moves or c_depth >= 16:
+				continue
+				
+			var sz = c_state.size()
+			var state_set = {}
+			if not is_advanced:
+				for x in c_state: state_set[x] = true
+				
+			for f in candidate_fingers:
+				if is_advanced or not state_set.has(f):
+					for i in range(sz):
+						if is_advanced:
+							var prev_f = c_state[i]
+							var next_f = c_state[(i + 1) % sz]
+							if f == prev_f or f == next_f:
+								continue
+						var nxt = c_state.duplicate()
+						nxt.insert(i + 1, f)
+						
+						var sz_n = nxt.size()
+						if sz_n > 1 and nxt[0] == nxt[sz_n - 1]:
+							sz_n -= 1
+						var nxt_mask: int = 0
+						for k in range(sz_n):
+							nxt_mask |= _fast_table[nxt[k]][nxt[(k + 1) % sz_n]]
+							
+						if nxt_mask == c_mask:
+							continue
+						var new_depth = c_depth + 1
+						if nxt_mask == start_mask:
+							best_moves = min(best_moves, new_depth)
+							continue
+							
+						var nxt_key: int = nxt_mask
+						if not is_advanced:
+							var pin_bits: int = 0
+							for p in nxt: pin_bits |= (1 << p)
+							nxt_key = (nxt_mask << 10) | pin_bits
+							
+						if visited.has(nxt_key):
+							best_moves = min(best_moves, new_depth + visited[nxt_key])
+						if not visited_backward.has(nxt_key) or visited_backward[nxt_key] > new_depth:
+							visited_backward[nxt_key] = new_depth
+							if new_depth < best_moves:
+								queue_backward.push_back([nxt, new_depth, nxt_mask])
+								
+			if sz > 3:
+				for i in range(sz):
+					var nxt = c_state.duplicate()
+					nxt.remove_at(i)
+					
+					var sz_n = nxt.size()
+					if sz_n > 1 and nxt[0] == nxt[sz_n - 1]:
+						sz_n -= 1
+					var nxt_mask: int = 0
+					for k in range(sz_n):
+						nxt_mask |= _fast_table[nxt[k]][nxt[(k + 1) % sz_n]]
+						
+					if nxt_mask == c_mask:
+						continue
+					var new_depth = c_depth + 1
+					if nxt_mask == start_mask:
+						best_moves = min(best_moves, new_depth)
+						continue
+						
+					var nxt_key: int = nxt_mask
+					if not is_advanced:
+						var pin_bits: int = 0
+						for p in nxt: pin_bits |= (1 << p)
+						nxt_key = (nxt_mask << 10) | pin_bits
+						
+					if visited.has(nxt_key):
+						best_moves = min(best_moves, new_depth + visited[nxt_key])
+					if not visited_backward.has(nxt_key) or visited_backward[nxt_key] > new_depth:
+						visited_backward[nxt_key] = new_depth
+						if new_depth < best_moves:
+							queue_backward.push_back([nxt, new_depth, nxt_mask])
+							
+	return best_moves if best_moves != 999 else -1
